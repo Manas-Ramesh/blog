@@ -5,12 +5,21 @@ const { authenticateToken } = require("./authRoutes");
 const router = express.Router();
 
 // Get all posts
+// Get all posts (or filter by category)
 router.get("/", (req, res) => {
-    db.query("SELECT * FROM posts ORDER BY created_at DESC", (err, results) => {
+    const { category } = req.query;
+    let sql = "SELECT * FROM posts";
+
+    if (category) {
+        sql += " WHERE category = ?";
+    }
+
+    db.query(sql, category ? [category] : [], (err, results) => {
         if (err) return res.status(500).json(err);
         res.json(results);
     });
 });
+
 // Get a single post by ID
 router.get("/:id", (req, res) => {
     const postId = req.params.id;
@@ -46,24 +55,25 @@ const generateSlug = (title) => {
 };
 
 router.post("/", authenticateToken, (req, res) => {
-    let { title, slug, content, tags } = req.body;
+    let { title, slug, content, tags, category } = req.body;
     
-    if (!title || !content) {
-        return res.status(400).json({ error: "Title and content are required" });
+    if (!title || !content || !category) {
+        return res.status(400).json({ error: "Title, content, and category are required" });
     }
 
     // ✅ Auto-generate slug if not provided
     slug = slug ? generateSlug(slug) : generateSlug(title);
 
     db.query(
-        "INSERT INTO posts (title, slug, content, tags) VALUES (?, ?, ?, ?)",
-        [title, slug, content, tags],
+        "INSERT INTO posts (title, slug, content, tags, category) VALUES (?, ?, ?, ?, ?)",
+        [title, slug, content, tags, category],
         (err, result) => {
             if (err) return res.status(500).json(err);
             res.json({ message: "Post created successfully", postId: result.insertId, slug });
         }
     );
 });
+
 
 
 // Delete a post by ID (Admin only)
@@ -84,15 +94,15 @@ router.delete("/:id", authenticateToken, (req, res) => {
 // Update a post by ID (Admin only)
 router.put("/:id", authenticateToken, (req, res) => {
     const postId = req.params.id;
-    const { title, slug, content, tags } = req.body;
+    const { title, slug, content, tags, category } = req.body;
 
-    if (!title || !slug || !content) {
-        return res.status(400).json({ error: "Title, slug, and content are required" });
+    if (!title || !slug || !content || !category) {
+        return res.status(400).json({ error: "Title, slug, content, and category are required" });
     }
 
     db.query(
-        "UPDATE posts SET title = ?, slug = ?, content = ?, tags = ? WHERE id = ?",
-        [title, slug, content, tags, postId],
+        "UPDATE posts SET title = ?, slug = ?, content = ?, tags = ?, category = ? WHERE id = ?",
+        [title, slug, content, tags, category, postId],
         (err, result) => {
             if (err) return res.status(500).json(err);
 
@@ -104,6 +114,7 @@ router.put("/:id", authenticateToken, (req, res) => {
         }
     );
 });
+
 
 
 module.exports = router;
