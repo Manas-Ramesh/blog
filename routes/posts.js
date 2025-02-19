@@ -41,22 +41,30 @@ router.get("/slug/:slug", (req, res) => {
 });
 
 // Create a new post
+const generateSlug = (title) => {
+    return title.toLowerCase().trim().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+};
+
 router.post("/", authenticateToken, (req, res) => {
-    const { title, slug, content, tags } = req.body;
+    let { title, slug, content, tags } = req.body;
     
-    if (!title || !slug || !content) {
-        return res.status(400).json({ error: "Title, slug, and content are required" });
+    if (!title || !content) {
+        return res.status(400).json({ error: "Title and content are required" });
     }
+
+    // ✅ Auto-generate slug if not provided
+    slug = slug ? generateSlug(slug) : generateSlug(title);
 
     db.query(
         "INSERT INTO posts (title, slug, content, tags) VALUES (?, ?, ?, ?)",
         [title, slug, content, tags],
         (err, result) => {
             if (err) return res.status(500).json(err);
-            res.json({ message: "Post created successfully", postId: result.insertId });
+            res.json({ message: "Post created successfully", postId: result.insertId, slug });
         }
     );
 });
+
 
 // Delete a post by ID (Admin only)
 router.delete("/:id", authenticateToken, (req, res) => {
