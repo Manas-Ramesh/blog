@@ -1,5 +1,6 @@
 const express = require("express");
 const db = require("../db"); // Import database connection
+const { authenticateToken } = require("./authRoutes");
 
 const router = express.Router();
 
@@ -40,7 +41,7 @@ router.get("/slug/:slug", (req, res) => {
 });
 
 // Create a new post
-router.post("/", (req, res) => {
+router.post("/", authenticateToken, (req, res) => {
     const { title, slug, content, tags } = req.body;
     
     if (!title || !slug || !content) {
@@ -56,8 +57,9 @@ router.post("/", (req, res) => {
         }
     );
 });
-// Delete a post by ID
-router.delete("/:id", (req, res) => {
+
+// Delete a post by ID (Admin only)
+router.delete("/:id", authenticateToken, (req, res) => {
     const postId = req.params.id;
 
     db.query("DELETE FROM posts WHERE id = ?", [postId], (err, result) => {
@@ -70,8 +72,9 @@ router.delete("/:id", (req, res) => {
         res.json({ message: "Post deleted successfully" });
     });
 });
-// Update a post by ID
-router.put("/:id", (req, res) => {
+
+// Update a post by ID (Admin only)
+router.put("/:id", authenticateToken, (req, res) => {
     const postId = req.params.id;
     const { title, slug, content, tags } = req.body;
 
@@ -93,5 +96,6 @@ router.put("/:id", (req, res) => {
         }
     );
 });
+
 
 module.exports = router;
