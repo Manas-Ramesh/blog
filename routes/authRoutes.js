@@ -113,6 +113,9 @@ router.get(
     "/google/callback",
     passport.authenticate("google", { failureRedirect: "/login?error=unauthorized" }),
     (req, res) => {
+        console.log("✅ Google Callback Triggered!");
+        console.log("🔹 User from Passport:", req.user);
+
         if (!req.user) {
             console.error("❌ No user received from Google OAuth.");
             return res.redirect(`${process.env.FRONTEND_URL}/login?error=unauthorized`);
@@ -120,13 +123,15 @@ router.get(
 
         console.log("✅ Google User Info:", req.user);
 
-        // Make sure email is checked correctly
+        // ✅ Check if the logged-in user is the admin
         if (req.user.email !== process.env.ADMIN_EMAIL) {
-            console.error("❌ Unauthorized Email Attempt:", req.user.email);
-            return res.redirect(`${process.env.FRONTEND_URL}/login?error=unauthorized`);
+            console.warn("❌ Unauthorized Email Attempt:", req.user.email);
+
+            // ✅ Redirect to home with an error message
+            return res.redirect(`${process.env.FRONTEND_URL}/?error=unauthorized`);
         }
 
-        // ✅ Generate JWT Token
+        // ✅ Generate JWT Token for the admin
         const token = jwt.sign(
             { email: req.user.email, name: req.user.name },
             process.env.JWT_SECRET,
@@ -139,6 +144,7 @@ router.get(
         res.redirect(`${process.env.FRONTEND_URL}/login?token=${token}`);
     }
 );
+
 
 
 
