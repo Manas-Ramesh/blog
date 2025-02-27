@@ -122,42 +122,37 @@ router.get("/related/:slug", async (req, res) => {
 
 router.post("/", authenticateToken, async (req, res) => {
     try {
-        let { title, content, category } = req.body;
+        const { title, content, category } = req.body;
 
         if (!title || !content || !category) {
             return res.status(400).json({ message: "All fields are required" });
         }
 
-        // ✅ Get Google Account name as the author
-        const author = req.user.email ? req.user.email.split("@")[0] : "Unknown";
+        console.log("🔍 User Posting:", req.user);
 
-        // ✅ Generate slug from title
-        const slug = generateSlug(title);
+        // ✅ Extract username from email
+        const author = req.user?.email ? req.user.email.split("@")[0] : "Unknown";
+        const date = new Date().toISOString(); 
 
-        // ✅ Store date in correct format
-        const date = new Date().toISOString();
+        console.log("✅ Author being saved:", author);
 
-        // ✅ Insert post into the database
         db.query(
-            "INSERT INTO posts (title, slug, content, category, author, date) VALUES (?, ?, ?, ?, ?, ?)",
-            [title, slug, content, category, author, date],
+            "INSERT INTO posts (title, content, category, author, date) VALUES (?, ?, ?, ?, ?)",
+            [title, content, category, author, date],
             (err, result) => {
                 if (err) {
                     console.error("❌ Database Insert Error:", err);
-                    return res.status(500).json({ message: "Internal Server Error" });
+                    return res.status(500).json({ error: "Database error" });
                 }
-                res.status(201).json({
-                    message: "Post created successfully!",
-                    postId: result.insertId,
-                    slug,
-                });
+                res.status(201).json({ message: "Post created successfully!", postId: result.insertId });
             }
         );
     } catch (error) {
-        console.error("Error creating post:", error);
-        res.status(500).json({ message: "Internal Server Error" });
+        console.error("❌ Error creating post:", error);
+        res.status(500).json({ message: "Internal server error" });
     }
 });
+
 
 // Delete a post by ID (Admin only)
 router.delete("/:id", authenticateToken, (req, res) => {
@@ -183,20 +178,26 @@ router.put("/:id", authenticateToken, (req, res) => {
         return res.status(400).json({ error: "Title, slug, content, and category are required" });
     }
 
+    // ✅ Ensure the existing `author` and `date` are not overwritten
     db.query(
-        "UPDATE posts SET title = ?, slug = ?, content = ?, tags = ?, category = ? WHERE id = ?",
+        "UPDATE posts SET title = ?, slug = ?, content = ?, tags = ?, category = ?, date = NOW() WHERE id = ?",
         [title, slug, content, tags, category, postId],
         (err, result) => {
-            if (err) return res.status(500).json(err);
+            if (err) {
+                console.error("❌ Update Error:", err);
+                return res.status(500).json({ error: "Database error" });
+            }
 
             if (result.affectedRows === 0) {
                 return res.status(404).json({ error: "Post not found" });
             }
 
+            console.log("✅ Post updated successfully:", { postId, title, slug, category });
             res.json({ message: "Post updated successfully" });
         }
     );
 });
+
 
 
 
