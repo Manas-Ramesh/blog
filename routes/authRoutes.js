@@ -98,21 +98,20 @@ router.get(
 // ✅ Route: Google Callback
 router.get(
     "/google/callback",
-    passport.authenticate("google", { failureRedirect: "/" }),
+    passport.authenticate("google", { failureRedirect: "/login" }),
     (req, res) => {
         if (!req.user) {
-            console.error("❌ OAuth Login Failed: No User Data");
-            return res.redirect(`${process.env.FRONTEND_URL}/login?error=oauth_failed`);
+            return res.redirect(`${process.env.FRONTEND_URL}/login?error=unauthorized`);
         }
 
-        const user = req.user;
+        // ✅ Generate token
         const token = jwt.sign(
-            { email: user.email, name: user.name },
+            { email: req.user.email, name: req.user.name },
             process.env.JWT_SECRET,
             { expiresIn: "1h" }
         );
 
-        console.log("✅ OAuth Login Successful - Redirecting with Token:", token);
+        // ✅ Redirect with token
         res.redirect(`${process.env.FRONTEND_URL}/login?token=${token}`);
     }
 );
