@@ -68,7 +68,9 @@ passport.use(
         {
             clientID: process.env.GOOGLE_CLIENT_ID,
             clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-            callbackURL: "http://localhost:3001/auth/google/callback",
+            callbackURL: process.env.NODE_ENV === "production"
+            ? "https://blog-backend-z5eu.onrender.com/auth/google/callback"
+            : "http://localhost:3001/auth/google/callback",
         },
         (accessToken, refreshToken, profile, done) => {
             // Extract email and name from Google profile
