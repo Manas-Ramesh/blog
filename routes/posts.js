@@ -104,6 +104,21 @@ const generateSlug = (title) => {
 //         }
 //     );
 // });
+router.get("/related/:slug", async (req, res) => {
+    const slug = req.params.slug;
+
+    db.query(
+        "SELECT * FROM posts WHERE slug != ? ORDER BY RAND() LIMIT 3",
+        [slug],
+        (err, results) => {
+            if (err) {
+                console.error("❌ Database Error:", err);
+                return res.status(500).json({ error: "Internal Server Error" });
+            }
+            res.json(results);
+        }
+    );
+});
 
 router.post("/", authenticateToken, async (req, res) => {
     try {
@@ -114,7 +129,7 @@ router.post("/", authenticateToken, async (req, res) => {
         }
 
         // ✅ Get Google Account name as the author
-        const author = req.user.name || "Unknown"; 
+        const author = req.user.email ? req.user.email.split("@")[0] : "Unknown";
 
         // ✅ Generate slug from title
         const slug = generateSlug(title);
