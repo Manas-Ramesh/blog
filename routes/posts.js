@@ -1,6 +1,6 @@
 const express = require("express");
 const db = require("../db"); // Import database connection
-const { authenticateToken, isAdmin } = require("./authRoutes");
+const { authenticateToken } = require("./authRoutes");
 
 const router = express.Router();
 
@@ -54,7 +54,7 @@ const generateSlug = (title) => {
     return title.toLowerCase().trim().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
 };
 
-router.post("/", authenticateToken, isAdmin, (req, res) => {
+router.post("/", authenticateToken, (req, res) => {
     let { title, slug, content, tags, category } = req.body;
     
     if (!title || !content || !category) {
