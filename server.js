@@ -36,7 +36,7 @@ const PORT = process.env.PORT || 3001;
 app.use(cors({ origin: process.env.FRONTEND_URL, credentials: true }));
 app.use(express.json());
 app.use("/auth", authRoutes);
-app.use("/posts", authenticateToken, postRoutes);
+app.use("/posts", postRoutes);
 
 app.get("/admin", authenticateToken, isAdmin, (req, res) => {
     res.json({ message: `Welcome, Admin! (${req.user.email})` });
