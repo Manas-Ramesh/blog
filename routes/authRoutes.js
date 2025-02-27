@@ -98,23 +98,35 @@ router.get(
 // ✅ Route: Google Callback
 router.get(
     "/google/callback",
-    passport.authenticate("google", { failureRedirect: "/login" }),
+    passport.authenticate("google", { failureRedirect: "/login?error=unauthorized" }),
     (req, res) => {
         if (!req.user) {
+            console.error("❌ No user received from Google OAuth.");
             return res.redirect(`${process.env.FRONTEND_URL}/login?error=unauthorized`);
         }
 
-        // ✅ Generate token
+        console.log("✅ Google User:", req.user);
+
+        // Ensure only the admin can log in
+        if (req.user.email !== process.env.ADMIN_EMAIL) {
+            console.error("❌ Unauthorized Email:", req.user.email);
+            return res.redirect(`${process.env.FRONTEND_URL}/login?error=unauthorized`);
+        }
+
+        // ✅ Generate Token
         const token = jwt.sign(
             { email: req.user.email, name: req.user.name },
             process.env.JWT_SECRET,
             { expiresIn: "1h" }
         );
 
+        console.log("✅ Token Generated:", token);
+
         // ✅ Redirect with token
         res.redirect(`${process.env.FRONTEND_URL}/login?token=${token}`);
     }
 );
+
 
 router.post("/login", async (req, res) => {
     const { email } = req.body;
