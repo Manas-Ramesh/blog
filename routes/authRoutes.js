@@ -110,12 +110,37 @@ router.get(
         res.redirect(`${process.env.FRONTEND_URL}/login-success?token=${token}`);
     }
 );
+router.post("/login", async (req, res) => {
+    const { email } = req.body;
+
+    console.log("🛠 Received Email:", email);  // ✅ Debugging
+
+    if (!email) {
+        console.log("❌ No email provided!");
+        return res.status(400).json({ message: "Email is required" });
+    }
+
+    console.log("🔍 Checking email against admin:", process.env.ADMIN_EMAIL);
+
+    if (email !== process.env.ADMIN_EMAIL) {
+        console.log("❌ Access Denied! Email does not match.");
+        return res.status(403).json({ message: "Access denied" });
+    }
+
+    const token = jwt.sign({ email }, process.env.JWT_SECRET, { expiresIn: "1h" });
+
+    console.log("✅ Login Successful, Token Generated!");
+    res.json({ token });
+});
 
 // ✅ Route: Logout
 router.get("/logout", (req, res) => {
     req.logout(() => {
         res.redirect("/");
     });
+});
+router.get("/", (req, res) => {
+    res.json({ message: "Auth routes are working!" });
 });
 
 // ✅ Middleware to Protect Routes
