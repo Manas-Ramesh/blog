@@ -69,6 +69,7 @@ passport.use(
             clientID: process.env.GOOGLE_CLIENT_ID,
             clientSecret: process.env.GOOGLE_CLIENT_SECRET,
             callbackURL: `${process.env.BACKEND_URL}/auth/google/callback`,
+            scope: ["profile", "email"], // ✅ Add this
         },
         (accessToken, refreshToken, profile, done) => {
             console.log("🔍 Google OAuth Callback Triggered!");
@@ -103,8 +104,9 @@ passport.deserializeUser((obj, done) => {
 // ✅ Route: Google Login
 router.get(
     "/google",
-    passport.authenticate("google", { scope: ["profile", "email"] })
+    passport.authenticate("google", { scope: ["profile", "email"] }) // ✅ Ensure scope is passed
 );
+
 
 // ✅ Route: Google Callback
 router.get(
