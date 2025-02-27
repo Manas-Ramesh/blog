@@ -100,6 +100,11 @@ router.get(
     "/google/callback",
     passport.authenticate("google", { failureRedirect: "/" }),
     (req, res) => {
+        if (!req.user) {
+            console.error("❌ OAuth Login Failed: No User Data");
+            return res.redirect(`${process.env.FRONTEND_URL}/login?error=oauth_failed`);
+        }
+
         const user = req.user;
         const token = jwt.sign(
             { email: user.email, name: user.name },
@@ -107,9 +112,11 @@ router.get(
             { expiresIn: "1h" }
         );
 
+        console.log("✅ OAuth Login Successful - Redirecting with Token:", token);
         res.redirect(`${process.env.FRONTEND_URL}/login?token=${token}`);
     }
 );
+
 router.post("/login", async (req, res) => {
     const { email } = req.body;
 
