@@ -1,6 +1,6 @@
 const express = require("express");
 const db = require("../db"); // Import database connection
-const { authenticateToken } = require("./authRoutes");
+const { authenticateToken,isAdmin } = require("./authRoutes");
 
 const router = express.Router();
 
@@ -54,26 +54,42 @@ const generateSlug = (title) => {
     return title.toLowerCase().trim().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
 };
 
-router.post("/", authenticateToken, (req, res) => {
-    let { title, slug, content, tags, category } = req.body;
+// router.post("/", authenticateToken, (req, res) => {
+//     let { title, slug, content, tags, category } = req.body;
     
+//     if (!title || !content || !category) {
+//         return res.status(400).json({ error: "Title, content, and category are required" });
+//     }
+
+//     // ✅ Auto-generate slug if not provided
+//     slug = slug ? generateSlug(slug) : generateSlug(title);
+
+//     db.query(
+//         "INSERT INTO posts (title, slug, content, tags, category) VALUES (?, ?, ?, ?, ?)",
+//         [title, slug, content, tags, category],
+//         (err, result) => {
+//             if (err) return res.status(500).json(err);
+//             res.json({ message: "Post created successfully", postId: result.insertId, slug });
+//         }
+//     );
+// });
+
+router.post("/", authenticateToken, isAdmin, (req, res) => { 
+    const { title, slug, content, tags, category } = req.body;
+
     if (!title || !content || !category) {
         return res.status(400).json({ error: "Title, content, and category are required" });
     }
-
-    // ✅ Auto-generate slug if not provided
-    slug = slug ? generateSlug(slug) : generateSlug(title);
 
     db.query(
         "INSERT INTO posts (title, slug, content, tags, category) VALUES (?, ?, ?, ?, ?)",
         [title, slug, content, tags, category],
         (err, result) => {
             if (err) return res.status(500).json(err);
-            res.json({ message: "Post created successfully", postId: result.insertId, slug });
+            res.json({ message: "Post created successfully" });
         }
     );
 });
-
 
 
 // Delete a post by ID (Admin only)
