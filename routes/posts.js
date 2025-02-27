@@ -85,27 +85,64 @@ const generateSlug = (title) => {
     return title.toLowerCase().trim().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
 };
 
-router.post("/", authenticateToken, (req, res) => {
-    let { title, slug, content, tags, category } = req.body;
+// router.post("/", authenticateToken, (req, res) => {
+//     let { title, slug, content, tags, category } = req.body;
     
-    if (!title || !content || !category) {
-        return res.status(400).json({ error: "Title, content, and category are required" });
-    }
+//     if (!title || !content || !category) {
+//         return res.status(400).json({ error: "Title, content, and category are required" });
+//     }
 
-    // ✅ Auto-generate slug if not provided
-    slug = slug ? generateSlug(slug) : generateSlug(title);
+//     // ✅ Auto-generate slug if not provided
+//     slug = slug ? generateSlug(slug) : generateSlug(title);
 
-    db.query(
-        "INSERT INTO posts (title, slug, content, tags, category) VALUES (?, ?, ?, ?, ?)",
-        [title, slug, content, tags, category],
-        (err, result) => {
-            if (err) return res.status(500).json(err);
-            res.json({ message: "Post created successfully", postId: result.insertId, slug });
+//     db.query(
+//         "INSERT INTO posts (title, slug, content, tags, category) VALUES (?, ?, ?, ?, ?)",
+//         [title, slug, content, tags, category],
+//         (err, result) => {
+//             if (err) return res.status(500).json(err);
+//             res.json({ message: "Post created successfully", postId: result.insertId, slug });
+//         }
+//     );
+// });
+
+router.post("/", authenticateToken, async (req, res) => {
+    try {
+        let { title, content, category } = req.body;
+
+        if (!title || !content || !category) {
+            return res.status(400).json({ message: "All fields are required" });
         }
-    );
+
+        // ✅ Get Google Account name as the author
+        const author = req.user.name || "Unknown"; 
+
+        // ✅ Generate slug from title
+        const slug = generateSlug(title);
+
+        // ✅ Store date in correct format
+        const date = new Date().toISOString();
+
+        // ✅ Insert post into the database
+        db.query(
+            "INSERT INTO posts (title, slug, content, category, author, date) VALUES (?, ?, ?, ?, ?, ?)",
+            [title, slug, content, category, author, date],
+            (err, result) => {
+                if (err) {
+                    console.error("❌ Database Insert Error:", err);
+                    return res.status(500).json({ message: "Internal Server Error" });
+                }
+                res.status(201).json({
+                    message: "Post created successfully!",
+                    postId: result.insertId,
+                    slug,
+                });
+            }
+        );
+    } catch (error) {
+        console.error("Error creating post:", error);
+        res.status(500).json({ message: "Internal Server Error" });
+    }
 });
-
-
 
 // Delete a post by ID (Admin only)
 router.delete("/:id", authenticateToken, (req, res) => {
