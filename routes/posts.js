@@ -35,19 +35,30 @@ router.get("/:id", (req, res) => {
     });
 });
 // Get a single post by slug
+// router.get("/slug/:slug", (req, res) => {
+//     const { slug } = req.params;
+
+//     db.query("SELECT * FROM posts WHERE slug = ?", [slug], (err, results) => {
+//         if (err) return res.status(500).json(err);
+
+//         if (results.length === 0) {
+//             return res.status(404).json({ error: "Post not found" });
+//         }
+
+//         res.json(results[0]); // Send post details
+//     });
+// });
 router.get("/slug/:slug", (req, res) => {
-    const { slug } = req.params;
-
+    const slug = req.params.slug;
     db.query("SELECT * FROM posts WHERE slug = ?", [slug], (err, results) => {
-        if (err) return res.status(500).json(err);
-
-        if (results.length === 0) {
-            return res.status(404).json({ error: "Post not found" });
+        if (err) {
+            console.error("Database Error:", err);
+            return res.status(500).json([]);
         }
-
-        res.json(results[0]); // Send post details
+        res.json(results.length > 0 ? results[0] : {});  // ✅ Always returns an object, never `null`
     });
 });
+
 
 // Create a new post
 const generateSlug = (title) => {
