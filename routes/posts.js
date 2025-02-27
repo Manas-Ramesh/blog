@@ -48,14 +48,34 @@ router.get("/:id", (req, res) => {
 //         res.json(results[0]); // Send post details
 //     });
 // });
+// router.get("/slug/:slug", (req, res) => {
+//     const slug = req.params.slug;
+//     db.query("SELECT * FROM posts WHERE slug = ?", [slug], (err, results) => {
+//         if (err) {
+//             console.error("Database Error:", err);
+//             return res.status(500).json([]);
+//         }
+//         res.json(results.length > 0 ? results[0] : {});  // ✅ Always returns an object, never `null`
+//     });
+// });
 router.get("/slug/:slug", (req, res) => {
     const slug = req.params.slug;
+    
+    console.log(`🔍 Fetching post with slug: ${slug}`);
+
     db.query("SELECT * FROM posts WHERE slug = ?", [slug], (err, results) => {
         if (err) {
-            console.error("Database Error:", err);
-            return res.status(500).json([]);
+            console.error("❌ Database Error:", err);
+            return res.status(500).json({ error: "Internal Server Error" });
         }
-        res.json(results.length > 0 ? results[0] : {});  // ✅ Always returns an object, never `null`
+
+        if (results.length === 0) {
+            console.warn("❌ Post Not Found:", slug);
+            return res.status(404).json({ error: "Post not found" });
+        }
+
+        console.log("✅ Post Found:", results[0]);
+        res.json(results[0]);
     });
 });
 

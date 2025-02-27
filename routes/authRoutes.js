@@ -71,15 +71,26 @@ passport.use(
             callbackURL: `${process.env.BACKEND_URL}/auth/google/callback`,
         },
         (accessToken, refreshToken, profile, done) => {
+            console.log("🔍 Google OAuth Callback Triggered!");
+            console.log("✅ OAuth Profile:", profile);
+
+            if (!profile || !profile.emails) {
+                console.error("❌ No email found in Google profile!");
+                return done(null, false);
+            }
+
             const user = {
                 id: profile.id,
                 name: profile.displayName,
                 email: profile.emails[0].value,
             };
+
+            console.log("✅ Processed User:", user);
             return done(null, user);
         }
     )
 );
+
 
 // ✅ Serialize and Deserialize User
 passport.serializeUser((user, done) => {
@@ -105,15 +116,15 @@ router.get(
             return res.redirect(`${process.env.FRONTEND_URL}/login?error=unauthorized`);
         }
 
-        console.log("✅ Google User:", req.user);
+        console.log("✅ Google User Info:", req.user);
 
-        // Ensure only the admin can log in
+        // Make sure email is checked correctly
         if (req.user.email !== process.env.ADMIN_EMAIL) {
-            console.error("❌ Unauthorized Email:", req.user.email);
+            console.error("❌ Unauthorized Email Attempt:", req.user.email);
             return res.redirect(`${process.env.FRONTEND_URL}/login?error=unauthorized`);
         }
 
-        // ✅ Generate Token
+        // ✅ Generate JWT Token
         const token = jwt.sign(
             { email: req.user.email, name: req.user.name },
             process.env.JWT_SECRET,
@@ -122,10 +133,11 @@ router.get(
 
         console.log("✅ Token Generated:", token);
 
-        // ✅ Redirect with token
+        // ✅ Redirect user to frontend with the token
         res.redirect(`${process.env.FRONTEND_URL}/login?token=${token}`);
     }
 );
+
 
 
 router.post("/login", async (req, res) => {
