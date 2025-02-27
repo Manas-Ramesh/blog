@@ -107,7 +107,7 @@ router.get(
             { expiresIn: "1h" }
         );
 
-        res.redirect(`${process.env.FRONTEND_URL}/login-success?token=${token}`);
+        res.redirect(`${process.env.FRONTEND_URL}/login?token=${token}`);
     }
 );
 router.post("/login", async (req, res) => {
