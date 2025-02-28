@@ -8,8 +8,9 @@ const postRoutes = require("./routes/posts");
 const app = express();
 const PORT = process.env.PORT || 3001;
 const allowedOrigins = [
-    process.env.FRONTEND_URL, // Your primary frontend
-    "https://frontend-7q6wnkkc4-manas-projects-a5a3aa0c.vercel.app" // Older Vercel deployment (if needed)
+    "http://127.0.0.1:3000", // ✅ For local testing
+    "https://frontend-iota-ten-55.vercel.app", // ✅ Your Vercel frontend URL
+    "https://YOUR-ACTUAL-VERCEL-DOMAIN.vercel.app" // ✅ Replace with actual deployment
 ];
 
 app.use(cors({
