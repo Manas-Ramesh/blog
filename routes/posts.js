@@ -125,6 +125,8 @@ router.get("/related/:slug", async (req, res) => {
     );
 });
 
+
+
 router.post("/", authenticateToken, async (req, res) => {
     try {
         const { title, content, category } = req.body;
@@ -133,28 +135,25 @@ router.post("/", authenticateToken, async (req, res) => {
             return res.status(400).json({ message: "All fields are required" });
         }
 
-        // ✅ Get the email from req.user (OAuth User)
         if (!req.user || !req.user.email) {
             return res.status(401).json({ message: "Unauthorized. No user detected" });
         }
 
-        // ✅ Extract username from email (before @)
         const author = req.user.email.split("@")[0];  
+        const date = new Date().toISOString();
+        const slug = generateSlug(title); // ✅ Generate slug from title
 
-        const date = new Date().toISOString(); // ✅ Store date in ISO format
+        console.log("📝 Creating Post - Title:", title, "Slug:", slug, "Author:", author);
 
-        console.log("📝 Creating Post - Title:", title, "Author:", author);
-
-        // ✅ Save post in DB
         db.query(
-            "INSERT INTO posts (title, content, category, author, date) VALUES (?, ?, ?, ?, ?)",
-            [title, content, category, author, date],
+            "INSERT INTO posts (title, content, category, author, date, slug) VALUES (?, ?, ?, ?, ?, ?)",
+            [title, content, category, author, date, slug],
             (err, result) => {
                 if (err) {
                     console.error("❌ Database Error:", err);
                     return res.status(500).json({ message: "Internal Server Error" });
                 }
-                res.status(201).json({ message: "Post created successfully!", postId: result.insertId, author });
+                res.status(201).json({ message: "Post created successfully!", postId: result.insertId, slug });
             }
         );
     } catch (error) {
@@ -162,6 +161,7 @@ router.post("/", authenticateToken, async (req, res) => {
         res.status(500).json({ message: "Internal server error" });
     }
 });
+
 
 
 
