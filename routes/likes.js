@@ -40,8 +40,6 @@ router.post("/:postId", authenticateToken, async (req, res) => {
 router.get("/:postId", async (req, res) => {
     try {
         const { postId } = req.params;
-
-        console.log(`🔍 Checking likes for post ID: ${postId}`); // Debug log
         const connection = await db.getConnection();
 
         const [likesCount] = await connection.query(
@@ -49,15 +47,13 @@ router.get("/:postId", async (req, res) => {
             [postId]
         );
 
-        connection.release(); // ✅ Release connection back to pool
-
-        console.log("✅ Query Result:", likesCount); // Log query output
-
+        connection.release();
         res.json({ likes_count: likesCount[0]?.count || 0 });
     } catch (error) {
-        console.error("❌ Database Error Fetching Likes:", error);
+        console.error("❌ Error fetching likes:", error);
         res.status(500).json({ message: "Internal server error" });
     }
 });
+
 
 module.exports = router;

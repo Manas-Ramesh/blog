@@ -115,16 +115,17 @@ router.get("/:id", async (req, res) => {
 //         res.json(results.length > 0 ? results[0] : {});  // ✅ Always returns an object, never `null`
 //     });
 // });
-router.get("/slug/:slug", (req, res) => {
-    const slug = req.params.slug;
-    
-    console.log(`🔍 Fetching post with slug: ${slug}`);
+router.get("/slug/:slug", async (req, res) => {
+    try {
+        const slug = req.params.slug;
+        const connection = await db.getConnection(); // ✅ Get connection from pool
 
-    db.query("SELECT * FROM posts WHERE slug = ?", [slug], (err, results) => {
-        if (err) {
-            console.error("❌ Database Error:", err);
-            return res.status(500).json({ error: "Internal Server Error" });
-        }
+        console.log(`🔍 Fetching post with slug: ${slug}`);
+
+        // ✅ Await the query properly
+        const [results] = await connection.query("SELECT * FROM posts WHERE slug = ?", [slug]);
+
+        connection.release(); // ✅ Release connection back to the pool
 
         if (results.length === 0) {
             console.warn("❌ Post Not Found:", slug);
@@ -133,8 +134,12 @@ router.get("/slug/:slug", (req, res) => {
 
         console.log("✅ Post Found:", results[0]);
         res.json(results[0]);
-    });
+    } catch (error) {
+        console.error("❌ Database Error:", error);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
 });
+
 
 
 // Create a new post
@@ -325,7 +330,6 @@ router.post("/:id/view", authenticateToken, async (req, res) => {
 
         const connection = await db.getConnection();
 
-        // ✅ Check if the user has already viewed this post
         const [existingView] = await connection.query(
             "SELECT * FROM views WHERE post_id = ? AND user_email = ?",
             [postId, userEmail]
@@ -336,7 +340,6 @@ router.post("/:id/view", authenticateToken, async (req, res) => {
             return res.json({ message: "View already recorded" });
         }
 
-        // ✅ Insert a new view record
         await connection.query(
             "INSERT INTO views (post_id, user_email) VALUES (?, ?)",
             [postId, userEmail]
@@ -349,6 +352,7 @@ router.post("/:id/view", authenticateToken, async (req, res) => {
         res.status(500).json({ message: "Internal server error" });
     }
 });
+
 
 
 // ✅ Define like route correctly
