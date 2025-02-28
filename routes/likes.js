@@ -1,67 +1,60 @@
 const express = require("express");
 const router = express.Router();
-const db = require("../db"); // Ensure correct DB import
-const { authenticateToken } = require("./authRoutes"); 
+const db = require("../db"); // Ensure it's the promise-based db.js
+const { authenticateToken } = require("./authRoutes");
 
-// Toggle Like on a Post
+// ✅ Toggle Like on a Post
 router.post("/:postId", authenticateToken, async (req, res) => {
     try {
         const { postId } = req.params;
-        const userEmail = req.user.email; // Get user's email from JWT
+        const userId = req.user.id; // Ensure req.user is populated
 
-        console.log(`🔍 Incoming Like Request - User: ${userEmail}, Post: ${postId}`);
+        // ✅ Check if user already liked the post
+        const [existingLikes] = await db.query(
+            "SELECT * FROM likes WHERE post_id = ? AND user_id = ?",
+            [postId, userId]
+        );
 
-        // Check if user already liked the post
-        db.query("SELECT * FROM likes WHERE post_id = ? AND user_email = ?", [postId, userEmail], (err, results) => {
-            if (err) {
-                console.error("❌ Database error on SELECT:", err);
-                return res.status(500).json({ message: "Database error" });
-            }
-
-            if (results.length > 0) {
-                console.log("🛑 User already liked this post. Removing like...");
-                db.query("DELETE FROM likes WHERE post_id = ? AND user_email = ?", [postId, userEmail], (deleteErr) => {
-                    if (deleteErr) {
-                        console.error("❌ Error unliking post:", deleteErr);
-                        return res.status(500).json({ message: "Error unliking post" });
-                    }
-                    return res.json({ message: "Like removed" });
-                });
-            } else {
-                console.log("❤️ User is liking this post...");
-                db.query("INSERT INTO likes (post_id, user_email, created_at) VALUES (?, ?, NOW())", [postId, userEmail], (insertErr) => {
-                    if (insertErr) {
-                        console.error("❌ Error liking post:", insertErr);
-                        return res.status(500).json({ message: "Error liking post" });
-                    }
-                    return res.json({ message: "Post liked" });
-                });
-            }
-        });
-
+        if (existingLikes.length > 0) {
+            // Unlike the post
+            await db.query("DELETE FROM likes WHERE post_id = ? AND user_id = ?", [postId, userId]);
+            return res.json({ message: "Like removed" });
+        } else {
+            // Add a new like
+            await db.query("INSERT INTO likes (post_id, user_id) VALUES (?, ?)", [postId, userId]);
+            return res.json({ message: "Post liked" });
+        }
     } catch (error) {
         console.error("❌ Error toggling like:", error);
         res.status(500).json({ message: "Internal server error" });
     }
 });
 
-
-// Get the like count for a post
-router.get("/:postId", authenticateToken, async (req, res) => {
+// ✅ Get Like Count
+router.get("/:postId", async (req, res) => {
     try {
         const { postId } = req.params;
-        const userEmail = req.user.email;
+        console.log(`🔍 Checking likes for post ID: ${postId}`);
 
-        console.log(`🔍 Checking if user ${userEmail} liked post ${postId}`);
+        const [likesCount] = await db.query(
+            "SELECT COUNT(*) AS count FROM likes WHERE post_id = ?",
+            [postId]
+        );
 
-        const likeCheck = await db.query("SELECT * FROM likes WHERE post_id = ? AND user_email = ?", [postId, userEmail]);
+        console.log("✅ Raw Query Result:", likesCount); // Debug log
 
-        res.json({ liked: likeCheck.length > 0 });
+        if (!likesCount || likesCount.length === 0) {
+            console.warn("⚠️ No likes found for post:", postId);
+            return res.json({ likes_count: 0 });
+        }
+
+        res.json({ likes_count: likesCount[0].count || 0 });
     } catch (error) {
-        console.error("❌ Error checking like status:", error);
+        console.error("❌ Database Error Fetching Likes:", error);
         res.status(500).json({ message: "Internal server error" });
     }
 });
+
 
 
 module.exports = router;

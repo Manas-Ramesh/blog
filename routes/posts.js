@@ -65,16 +65,27 @@ router.get("/:id", (req, res) => {
         if (results.length === 0) {
             return res.status(404).json({ message: "Post not found" });
         }
-
+        
         // Fetch like count
-        db.query("SELECT COUNT(*) AS count FROM likes WHERE post_id = ?", [postId], (likeErr, likeResults) => {
-            if (likeErr) {
-                console.error("Error fetching like count:", likeErr);
-                return res.status(500).json({ message: "Error fetching like count" });
-            }
+        db.query(
+            "SELECT (SELECT COUNT(*) FROM likes WHERE post_id = ?) AS likes_count, " +
+            "(SELECT COUNT(*) FROM views WHERE post_id = ?) AS views_count",
+            [postId, postId],
+            (countErr, countResults) => {
+                if (countErr) {
+                    console.error("Error fetching counts:", countErr);
+                    return res.status(500).json({ message: "Error fetching counts" });
+                }
 
-            res.json({ ...results[0], likes_count: likeResults[0].count || 0 });
-        });
+                const counts = countResults[0];
+
+                res.json({
+                    ...post,
+                    likes_count: counts.likes_count || 0,
+                    views_count: counts.views_count || 0, // Add views count here
+                });
+            }
+        );
     });
 });
 
@@ -300,9 +311,44 @@ router.post("/:id/comments", authenticateToken, (req, res) => {
         }
     );
 });
+// Add a view if the user hasn't viewed this post yet
+router.post("/:id/view", authenticateToken, async (req, res) => {
+    try {
+        const { id: postId } = req.params;
+        const userEmail = req.user.email;
+
+        if (!userEmail) {
+            return res.status(401).json({ message: "Unauthorized" });
+        }
+
+        // Check if the user has already viewed this post
+        const existingView = await db.get(
+            "SELECT * FROM views WHERE post_id = ? AND user_email = ?",
+            [postId, userEmail]
+        );
+
+        if (existingView) {
+            return res.json({ message: "View already recorded" });
+        }
+
+        // Insert a new view record
+        await db.run("INSERT INTO views (post_id, user_email) VALUES (?, ?)", [postId, userEmail]);
+
+        res.json({ message: "View recorded" });
+    } catch (error) {
+        console.error("❌ Error tracking view:", error);
+        res.status(500).json({ message: "Internal server error" });
+    }
+});
+
 
 // ✅ Define like route correctly
-router.post("/:postId/like", authenticateToken, likePost);
+router.post("/likes/:id", authenticateToken, likePost);
+
+
+
+
+
 
 
 
