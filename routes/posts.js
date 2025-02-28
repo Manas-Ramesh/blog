@@ -104,7 +104,8 @@ router.get("/", async (req, res) => {
         const [results] = await connection.query(`
             SELECT posts.*, 
                    (SELECT COUNT(*) FROM comments WHERE comments.post_id = posts.id) AS comments_count,
-                   (SELECT COUNT(*) FROM likes WHERE likes.post_id = posts.id) AS likes_count 
+                   (SELECT COUNT(*) FROM likes WHERE likes.post_id = posts.id) AS likes_count,
+                   (SELECT COUNT(*) FROM views WHERE views.post_id = posts.id) AS views
             FROM posts
         `);
         connection.release();
@@ -136,7 +137,7 @@ router.get("/:id", async (req, res) => {
         const [counts] = await connection.query(
             `SELECT 
                 (SELECT COUNT(*) FROM likes WHERE post_id = ?) AS likes_count,
-                (SELECT COUNT(*) FROM views WHERE post_id = ?) AS views_count`,
+                (SELECT COUNT(*) FROM views WHERE post_id = ?) AS views,`,
             [postId, postId]
         );
 
@@ -248,8 +249,8 @@ router.post("/:id/view", authenticateToken, async (req, res) => {
             console.log("✅ View already recorded:", { views_count: existingView.length });
 
             // ✅ Fetch updated view count
-            const [[{ views_count }]] = await connection.query(
-                "SELECT COUNT(*) AS views_count FROM views WHERE post_id = ?",
+            const [[{ views }]] = await connection.query(
+                "SELECT COUNT(*) AS views FROM views WHERE post_id = ?",
                 [postId]
             );
 
@@ -261,8 +262,8 @@ router.post("/:id/view", authenticateToken, async (req, res) => {
         await connection.query("INSERT INTO views (post_id, user_email) VALUES (?, ?)", [postId, userEmail]);
 
         // ✅ Fetch updated view count
-        const [[{ views_count }]] = await connection.query(
-            "SELECT COUNT(*) AS views_count FROM views WHERE post_id = ?",
+        const [[{ views }]] = await connection.query(
+            "SELECT COUNT(*) AS views FROM views WHERE post_id = ?",
             [postId]
         );
 
