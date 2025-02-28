@@ -100,9 +100,6 @@ passport.serializeUser((user, done) => {
 passport.deserializeUser((obj, done) => {
     done(null, obj);
 });
-router.get("/me", authenticateToken, (req, res) => {
-    res.json({ email: req.user.email, name: req.user.name });
-});
 
 // ✅ Route: Google Login
 router.get(
@@ -206,5 +203,8 @@ const isAdmin = (req, res, next) => {
         res.status(403).json({ message: "Unauthorized" });
     }
 };
+router.get("/me", authenticateToken, (req, res) => {
+    res.json({ email: req.user.email, name: req.user.name });
+});
 
 module.exports = { router, authenticateToken, isAdmin };
