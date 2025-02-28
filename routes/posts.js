@@ -60,8 +60,14 @@ router.get("/:id/comments", async (req, res) => {
 // ✅ Toggle Like on a Post
 router.post("/likes/:id", authenticateToken, async (req, res) => {
     try {
-        const { id: postId } = req.params;
-        const userId = req.user.id;
+        const postId = req.params.id;
+        const userId = req.user.id; // ✅ Ensure user is authenticated
+
+        if (!postId || !userId) {
+            return res.status(400).json({ message: "Post ID and User ID are required." });
+        }
+
+        console.log("🔍 Toggling like for Post ID:", postId, "by User ID:", userId);
 
         const connection = await db.getConnection();
 
@@ -84,9 +90,11 @@ router.post("/likes/:id", authenticateToken, async (req, res) => {
         }
     } catch (error) {
         console.error("❌ Error toggling like:", error);
-        res.status(500).json({ message: "Internal server error" });
+        res.status(500).json({ message: "Internal server error", error: error.message });
     }
 });
+
+
 
 // ✅ Get all posts (with likes and comments count)
 router.get("/", async (req, res) => {
