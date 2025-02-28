@@ -247,7 +247,10 @@ router.post("/:id/view", authenticateToken, async (req, res) => {
             connection.release();
             return res.json({ message: "View already recorded" });
         }
-
+        const [[{ views_count }]] = await connection.query(
+            "SELECT COUNT(*) AS views_count FROM likes WHERE post_id = ?",
+            [postId]
+        );
         await connection.query("INSERT INTO views (post_id, user_email) VALUES (?, ?)", [postId, userEmail]);
 
         connection.release();
