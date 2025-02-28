@@ -100,14 +100,25 @@ router.post("/likes/:id", authenticateToken, async (req, res) => {
 // ✅ Get all posts (with likes and comments count)
 router.get("/", async (req, res) => {
     try {
+        const category = req.query.category; // ✅ Get category from query params
         const connection = await db.getConnection();
-        const [results] = await connection.query(`
+
+        let query = `
             SELECT posts.*, 
                    (SELECT COUNT(*) FROM comments WHERE comments.post_id = posts.id) AS comments_count,
                    (SELECT COUNT(*) FROM likes WHERE likes.post_id = posts.id) AS likes_count,
                    (SELECT COUNT(*) FROM views WHERE views.post_id = posts.id) AS views
             FROM posts
-        `);
+        `;
+
+        let params = [];
+
+        if (category) {
+            query += " WHERE posts.category = ?";
+            params.push(category);
+        }
+
+        const [results] = await connection.query(query, params);
         connection.release();
 
         res.json(results);
@@ -116,6 +127,7 @@ router.get("/", async (req, res) => {
         res.status(500).json({ message: "Internal Server Error" });
     }
 });
+
 
 // ✅ Get a single post by ID (including likes & views)
 router.get("/:id", async (req, res) => {
