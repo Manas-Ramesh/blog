@@ -309,7 +309,7 @@ router.post("/:id/view", authenticateToken, async (req, res) => {
         );
 
         connection.release();
-        return res.json({ views_count, message: "View recorded successfully" });
+        return res.json({ views, message: "View recorded successfully" });
 
     } catch (error) {
         console.error("❌ Error tracking view:", error);
