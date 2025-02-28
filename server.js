@@ -51,32 +51,20 @@ app.use(
 app.use(express.json());
 
 // ✅ Set up MySQL session store
-const sessionStore = new MySQLStore({
-    expiration: 1000 * 60 * 60 * 24, // 1 day session expiration
-    createDatabaseTable: true, // Auto-create sessions table
-    schema: {
-        tableName: "sessions",
-        columnNames: {
-            session_id: "session_id",
-            expires: "expires",
-            data: "data",
-        },
-    },
-}, db);
+const sessionStore = new MySQLStore({}, db);
 
-// ✅ Use session middleware with MySQL store
+// ✅ Use Sessions with MySQL Store
 app.use(
     session({
-        key: "user_sid",
-        secret: process.env.SESSION_SECRET, // Use a strong secret key
-        store: sessionStore,
+        secret: process.env.SESSION_SECRET || "your-secret-key", // ✅ Use secure env variable
         resave: false,
         saveUninitialized: false,
+        store: sessionStore, // ✅ Store sessions in MySQL
         cookie: {
-            secure: process.env.NODE_ENV === "production", // HTTPS only in production
-            httpOnly: true, // Prevent client-side access
-            maxAge: 1000 * 60 * 60 * 24, // 1-day expiration
-            sameSite: "Lax", // Allows cross-origin cookies with navigation
+            secure: process.env.NODE_ENV === "production", // ✅ Use secure cookies in production
+            httpOnly: true, // ✅ Prevent XSS attacks
+            sameSite: "lax", // ✅ Prevent CSRF attacks
+            maxAge: 1000 * 60 * 60 * 24, // 1 day session
         },
     })
 );
