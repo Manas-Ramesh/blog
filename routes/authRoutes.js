@@ -100,6 +100,9 @@ passport.serializeUser((user, done) => {
 passport.deserializeUser((obj, done) => {
     done(null, obj);
 });
+router.get("/me", authenticateToken, (req, res) => {
+    res.json({ email: req.user.email, name: req.user.name });
+});
 
 // ✅ Route: Google Login
 router.get(
