@@ -10,7 +10,7 @@ const PORT = process.env.PORT || 3001;
 const allowedOrigins = [
     "http://127.0.0.1:3000", // ✅ For local testing
     "https://frontend-iota-ten-55.vercel.app", // ✅ Your Vercel frontend URL
-    "https://YOUR-ACTUAL-VERCEL-DOMAIN.vercel.app" // ✅ Replace with actual deployment
+    "https://frontend-70enji21h-manas-projects-a5a3aa0c.vercel.app" // ✅ Replace with actual deployment
 ];
 
 app.use(cors({
