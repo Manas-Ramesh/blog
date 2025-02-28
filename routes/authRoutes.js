@@ -46,7 +46,7 @@ require("dotenv").config();
 const express = require("express");
 const passport = require("passport");
 const jwt = require("jsonwebtoken");
-const session = require("cookie-session");
+const session = require("express-session");
 const GoogleStrategy = require("passport-google-oauth20").Strategy;
 
 const router = express.Router();
