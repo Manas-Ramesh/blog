@@ -7,29 +7,31 @@ const { authenticateToken } = require("./authRoutes");
 router.post("/:postId", authenticateToken, async (req, res) => {
     try {
         const { postId } = req.params;
-        const userId = req.user.id; // Ensure req.user is populated from JWT
+        const userEmail = req.user.email; // Get user's email from JWT
+
+        console.log(`🔍 Incoming Like Request - User: ${userEmail}, Post: ${postId}`);
 
         // Check if user already liked the post
-        db.query("SELECT * FROM likes WHERE post_id = ? AND user_id = ?", [postId, userId], (err, results) => {
+        db.query("SELECT * FROM likes WHERE post_id = ? AND user_email = ?", [postId, userEmail], (err, results) => {
             if (err) {
-                console.error("Database error:", err);
+                console.error("❌ Database error on SELECT:", err);
                 return res.status(500).json({ message: "Database error" });
             }
 
             if (results.length > 0) {
-                // Unlike the post
-                db.query("DELETE FROM likes WHERE post_id = ? AND user_id = ?", [postId, userId], (deleteErr) => {
+                console.log("🛑 User already liked this post. Removing like...");
+                db.query("DELETE FROM likes WHERE post_id = ? AND user_email = ?", [postId, userEmail], (deleteErr) => {
                     if (deleteErr) {
-                        console.error("Error unliking post:", deleteErr);
+                        console.error("❌ Error unliking post:", deleteErr);
                         return res.status(500).json({ message: "Error unliking post" });
                     }
                     return res.json({ message: "Like removed" });
                 });
             } else {
-                // Add a new like
-                db.query("INSERT INTO likes (post_id, user_id) VALUES (?, ?)", [postId, userId], (insertErr) => {
+                console.log("❤️ User is liking this post...");
+                db.query("INSERT INTO likes (post_id, user_email, created_at) VALUES (?, ?, NOW())", [postId, userEmail], (insertErr) => {
                     if (insertErr) {
-                        console.error("Error liking post:", insertErr);
+                        console.error("❌ Error liking post:", insertErr);
                         return res.status(500).json({ message: "Error liking post" });
                     }
                     return res.json({ message: "Post liked" });
@@ -38,29 +40,28 @@ router.post("/:postId", authenticateToken, async (req, res) => {
         });
 
     } catch (error) {
-        console.error("Error toggling like:", error);
+        console.error("❌ Error toggling like:", error);
         res.status(500).json({ message: "Internal server error" });
     }
 });
+
 
 // Get the like count for a post
-router.get("/:postId", async (req, res) => {
+router.get("/:postId", authenticateToken, async (req, res) => {
     try {
         const { postId } = req.params;
+        const userEmail = req.user.email;
 
-        db.query("SELECT COUNT(*) AS count FROM likes WHERE post_id = ?", [postId], (err, results) => {
-            if (err) {
-                console.error("Error fetching like count:", err);
-                return res.status(500).json({ message: "Internal server error" });
-            }
+        console.log(`🔍 Checking if user ${userEmail} liked post ${postId}`);
 
-            res.json({ likes_count: results[0].count || 0 });
-        });
+        const likeCheck = await db.query("SELECT * FROM likes WHERE post_id = ? AND user_email = ?", [postId, userEmail]);
 
+        res.json({ liked: likeCheck.length > 0 });
     } catch (error) {
-        console.error("Error fetching like count:", error);
+        console.error("❌ Error checking like status:", error);
         res.status(500).json({ message: "Internal server error" });
     }
 });
+
 
 module.exports = router;
