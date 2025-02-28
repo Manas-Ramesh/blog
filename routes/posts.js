@@ -53,41 +53,42 @@ router.get("/", (req, res) => {
 
 // Get a single post by ID
 // Get a single post by ID
-router.get("/:id", (req, res) => {
-    const postId = req.params.id;
+router.get("/:id", async (req, res) => {
+    try {
+        const postId = req.params.id;
+        const connection = await db.getConnection();
 
-    db.query("SELECT * FROM posts WHERE id = ?", [postId], (err, results) => {
-        if (err) {
-            console.error("Database error:", err);
-            return res.status(500).json({ message: "Database error" });
-        }
+        // ✅ Fetch the post
+        const [postResults] = await connection.query("SELECT * FROM posts WHERE id = ?", [postId]);
 
-        if (results.length === 0) {
+        if (postResults.length === 0) {
+            connection.release();
             return res.status(404).json({ message: "Post not found" });
         }
-        
-        // Fetch like count
-        db.query(
-            "SELECT (SELECT COUNT(*) FROM likes WHERE post_id = ?) AS likes_count, " +
-            "(SELECT COUNT(*) FROM views WHERE post_id = ?) AS views_count",
-            [postId, postId],
-            (countErr, countResults) => {
-                if (countErr) {
-                    console.error("Error fetching counts:", countErr);
-                    return res.status(500).json({ message: "Error fetching counts" });
-                }
 
-                const counts = countResults[0];
+        const post = postResults[0];
 
-                res.json({
-                    ...post,
-                    likes_count: counts.likes_count || 0,
-                    views_count: counts.views_count || 0, // Add views count here
-                });
-            }
+        // ✅ Fetch like and view counts
+        const [counts] = await connection.query(
+            `SELECT 
+                (SELECT COUNT(*) FROM likes WHERE post_id = ?) AS likes_count,
+                (SELECT COUNT(*) FROM views WHERE post_id = ?) AS views_count`,
+            [postId, postId]
         );
-    });
+
+        connection.release();
+
+        res.json({
+            ...post,
+            likes_count: counts[0]?.likes_count || 0,
+            views_count: counts[0]?.views_count || 0,
+        });
+    } catch (error) {
+        console.error("❌ Error fetching post:", error);
+        res.status(500).json({ message: "Internal server error" });
+    }
 });
+
 
 
 // Get a single post by slug
@@ -312,6 +313,7 @@ router.post("/:id/comments", authenticateToken, (req, res) => {
     );
 });
 // Add a view if the user hasn't viewed this post yet
+// Track a view only if the user hasn't viewed it before
 router.post("/:id/view", authenticateToken, async (req, res) => {
     try {
         const { id: postId } = req.params;
@@ -321,19 +323,26 @@ router.post("/:id/view", authenticateToken, async (req, res) => {
             return res.status(401).json({ message: "Unauthorized" });
         }
 
-        // Check if the user has already viewed this post
-        const existingView = await db.get(
+        const connection = await db.getConnection();
+
+        // ✅ Check if the user has already viewed this post
+        const [existingView] = await connection.query(
             "SELECT * FROM views WHERE post_id = ? AND user_email = ?",
             [postId, userEmail]
         );
 
-        if (existingView) {
+        if (existingView.length > 0) {
+            connection.release();
             return res.json({ message: "View already recorded" });
         }
 
-        // Insert a new view record
-        await db.run("INSERT INTO views (post_id, user_email) VALUES (?, ?)", [postId, userEmail]);
+        // ✅ Insert a new view record
+        await connection.query(
+            "INSERT INTO views (post_id, user_email) VALUES (?, ?)",
+            [postId, userEmail]
+        );
 
+        connection.release();
         res.json({ message: "View recorded" });
     } catch (error) {
         console.error("❌ Error tracking view:", error);

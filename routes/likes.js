@@ -1,27 +1,35 @@
 const express = require("express");
 const router = express.Router();
-const db = require("../db"); // Ensure it's the promise-based db.js
+const db = require("../db"); // ✅ Now using the connection pool
 const { authenticateToken } = require("./authRoutes");
 
-// ✅ Toggle Like on a Post
 router.post("/:postId", authenticateToken, async (req, res) => {
     try {
         const { postId } = req.params;
-        const userId = req.user.id; // Ensure req.user is populated
+        const userId = req.user.id;
+
+        // ✅ Get a database connection from the pool
+        const connection = await db.getConnection();
 
         // ✅ Check if user already liked the post
-        const [existingLikes] = await db.query(
+        const [existingLikes] = await connection.query(
             "SELECT * FROM likes WHERE post_id = ? AND user_id = ?",
             [postId, userId]
         );
 
         if (existingLikes.length > 0) {
-            // Unlike the post
-            await db.query("DELETE FROM likes WHERE post_id = ? AND user_id = ?", [postId, userId]);
+            await connection.query(
+                "DELETE FROM likes WHERE post_id = ? AND user_id = ?",
+                [postId, userId]
+            );
+            connection.release(); // ✅ Release connection back to pool
             return res.json({ message: "Like removed" });
         } else {
-            // Add a new like
-            await db.query("INSERT INTO likes (post_id, user_id) VALUES (?, ?)", [postId, userId]);
+            await connection.query(
+                "INSERT INTO likes (post_id, user_id) VALUES (?, ?)",
+                [postId, userId]
+            );
+            connection.release(); // ✅ Release connection back to pool
             return res.json({ message: "Post liked" });
         }
     } catch (error) {
@@ -29,15 +37,19 @@ router.post("/:postId", authenticateToken, async (req, res) => {
         res.status(500).json({ message: "Internal server error" });
     }
 });
-
-// ✅ Get Like Count
 router.get("/:postId", async (req, res) => {
     try {
         const { postId } = req.params;
 
         console.log(`🔍 Checking likes for post ID: ${postId}`); // Debug log
+        const connection = await db.getConnection();
 
-        const [likesCount] = await db.query("SELECT COUNT(*) AS count FROM likes WHERE post_id = ?", [postId]);
+        const [likesCount] = await connection.query(
+            "SELECT COUNT(*) AS count FROM likes WHERE post_id = ?",
+            [postId]
+        );
+
+        connection.release(); // ✅ Release connection back to pool
 
         console.log("✅ Query Result:", likesCount); // Log query output
 
@@ -47,6 +59,5 @@ router.get("/:postId", async (req, res) => {
         res.status(500).json({ message: "Internal server error" });
     }
 });
-
 
 module.exports = router;
