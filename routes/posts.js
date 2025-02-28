@@ -170,59 +170,7 @@ router.post("/", authenticateToken, async (req, res) => {
         res.status(500).json({ message: "Internal server error", error: error.message });
     }
 });
-router.post("/comment/:id", authenticateToken, (req, res) => {
-    const { id } = req.params;
-    const { content } = req.body;
-    const userEmail = req.user.email;
 
-    db.query("INSERT INTO comments (post_id, user_email, content) VALUES (?, ?, ?)", [id, userEmail, content], (err) => {
-        if (err) return res.status(500).json(err);
-        res.json({ message: "Comment added" });
-    });
-});
-
-router.get("/comments/:id", (req, res) => {
-    const { id } = req.params;
-
-    db.query("SELECT * FROM comments WHERE post_id = ? ORDER BY created_at DESC", [id], (err, results) => {
-        if (err) return res.status(500).json(err);
-        res.json(results);
-    });
-});
-
-router.post("/like/:id", authenticateToken, (req, res) => {
-    const { id } = req.params;
-    const userEmail = req.user.email;
-
-    db.query("SELECT * FROM likes WHERE post_id = ? AND user_email = ?", [id, userEmail], (err, results) => {
-        if (err) return res.status(500).json(err);
-        if (results.length > 0) return res.status(400).json({ message: "Already liked" });
-
-        db.query("INSERT INTO likes (post_id, user_email) VALUES (?, ?)", [id, userEmail], (err) => {
-            if (err) return res.status(500).json(err);
-
-            db.query("UPDATE posts SET likes = likes + 1 WHERE id = ?", [id]);
-            res.json({ message: "Liked" });
-        });
-    });
-});
-
-router.post("/view/:id", authenticateToken, (req, res) => {
-    const { id } = req.params;
-    const userEmail = req.user.email;
-
-    db.query("SELECT * FROM views WHERE post_id = ? AND user_email = ?", [id, userEmail], (err, results) => {
-        if (err) return res.status(500).json(err);
-        if (results.length > 0) return res.json({ message: "Already viewed" });
-
-        db.query("INSERT INTO views (post_id, user_email) VALUES (?, ?)", [id, userEmail], (err) => {
-            if (err) return res.status(500).json(err);
-
-            db.query("UPDATE posts SET views = views + 1 WHERE id = ?", [id]);
-            res.json({ message: "View counted" });
-        });
-    });
-});
 
 
 
@@ -271,6 +219,66 @@ router.put("/:id", authenticateToken, (req, res) => {
 });
 
 
+router.post("/:id/view", authenticateToken, (req, res) => {
+    const postId = req.params.id;
+    const userEmail = req.user.email;
+
+    db.query("SELECT * FROM post_views WHERE post_id = ? AND user_email = ?", [postId, userEmail], (err, results) => {
+        if (err) return res.status(500).json(err);
+
+        if (results.length === 0) {
+            db.query("INSERT INTO post_views (post_id, user_email) VALUES (?, ?)", [postId, userEmail], (err) => {
+                if (err) return res.status(500).json(err);
+                db.query("UPDATE posts SET views = views + 1 WHERE id = ?", [postId]);
+                return res.json({ message: "View counted" });
+            });
+        } else {
+            return res.json({ message: "View already counted" });
+        }
+    });
+});
+router.post("/:id/like", authenticateToken, (req, res) => {
+    const postId = req.params.id;
+    const userEmail = req.user.email;
+
+    db.query("SELECT * FROM post_likes WHERE post_id = ? AND user_email = ?", [postId, userEmail], (err, results) => {
+        if (err) return res.status(500).json(err);
+
+        if (results.length === 0) {
+            db.query("INSERT INTO post_likes (post_id, user_email) VALUES (?, ?)", [postId, userEmail], (err) => {
+                if (err) return res.status(500).json(err);
+                db.query("UPDATE posts SET likes = likes + 1 WHERE id = ?", [postId]);
+                return res.json({ message: "Liked successfully" });
+            });
+        } else {
+            return res.json({ message: "Already liked" });
+        }
+    });
+});
+router.post("/:id/comment", authenticateToken, (req, res) => {
+    const postId = req.params.id;
+    const userEmail = req.user.email;
+    const { content } = req.body;
+
+    if (!content) {
+        return res.status(400).json({ error: "Comment cannot be empty" });
+    }
+
+    db.query("INSERT INTO comments (post_id, user_email, content) VALUES (?, ?, ?)", [postId, userEmail, content], (err) => {
+        if (err) return res.status(500).json(err);
+        return res.json({ message: "Comment added" });
+    });
+});
+
+// Fetch comments for a post
+router.get("/:id/comments", (req, res) => {
+    const postId = req.params.id;
+
+    db.query("SELECT * FROM comments WHERE post_id = ?", [postId], (err, results) => {
+        if (err) return res.status(500).json(err);
+        res.json(results);
+    });
+});
 
 
 module.exports = router;
