@@ -33,6 +33,7 @@ router.post("/:id/comments", authenticateToken, async (req, res) => {
     }
 });
 
+
 router.get("/:id/comments", async (req, res) => {
     try {
         const postId = req.params.id;
