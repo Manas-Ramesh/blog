@@ -7,8 +7,23 @@ const postRoutes = require("./routes/posts");
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+const allowedOrigins = [
+    process.env.FRONTEND_URL, // Your primary frontend
+    "https://frontend-7q6wnkkc4-manas-projects-a5a3aa0c.vercel.app" // Older Vercel deployment (if needed)
+];
 
-app.use(cors({ origin: process.env.FRONTEND_URL, credentials: true }));
+app.use(cors({
+    origin: function (origin, callback) {
+        if (!origin || allowedOrigins.includes(origin)) {
+            callback(null, true);
+        } else {
+            callback(new Error("Not allowed by CORS"));
+        }
+    },
+    credentials: true
+}));
+
+// app.use(cors({ origin: process.env.FRONTEND_URL, credentials: true }));
 app.use(express.json());
 app.use("/auth", authRoutes);
 app.use("/posts", postRoutes);
