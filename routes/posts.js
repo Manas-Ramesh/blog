@@ -276,7 +276,7 @@ router.post("/:id/comments", authenticateToken, (req, res) => {
 });
 
 // ✅ Define like route correctly
-router.post("/:postId/like", authenticateToken, likePost);
+router.post("/:postId/like", likePost);
 
 
 
