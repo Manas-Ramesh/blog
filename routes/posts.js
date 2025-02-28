@@ -218,6 +218,42 @@ router.put("/:id", authenticateToken, (req, res) => {
     );
 });
 
+// Get comments for a post
+router.get("/:id/comments", (req, res) => {
+    const postId = req.params.id;
+    db.query("SELECT username, content, created_at FROM comments WHERE post_id = ? ORDER BY created_at DESC", 
+        [postId], 
+        (err, results) => {
+            if (err) {
+                console.error("❌ Database Error:", err);
+                return res.status(500).json({ error: "Internal Server Error" });
+            }
+            res.json(results);
+        }
+    );
+});
+
+// Add a new comment
+router.post("/:id/comments", authenticateToken, (req, res) => {
+    const postId = req.params.id;
+    const { content } = req.body;
+    const username = req.user.name; // Extracted from Google OAuth
+
+    if (!content) {
+        return res.status(400).json({ error: "Content is required" });
+    }
+
+    db.query("INSERT INTO comments (post_id, username, content) VALUES (?, ?, ?)", 
+        [postId, username, content], 
+        (err, result) => {
+            if (err) {
+                console.error("❌ Database Error:", err);
+                return res.status(500).json({ error: "Internal Server Error" });
+            }
+            res.status(201).json({ message: "Comment added successfully!" });
+        }
+    );
+});
 
 
 
