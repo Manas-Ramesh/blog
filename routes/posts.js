@@ -3,6 +3,36 @@ const db = require("../db"); // Import database connection
 const { authenticateToken, isAdmin } = require("./authRoutes");
 
 const router = express.Router();
+router.post("/:id/comments", authenticateToken, async (req, res) => {
+    try {
+        const postId = req.params.id;
+        const { content } = req.body;
+
+        if (!req.user) {
+            return res.status(401).json({ message: "Unauthorized. No user detected" });
+        }
+
+        if (!content) {
+            return res.status(400).json({ error: "Content is required" });
+        }
+
+        const username = req.user.name; // Extracted from Google OAuth
+
+        const connection = await db.getConnection();
+        await connection.query(
+            "INSERT INTO comments (post_id, username, content) VALUES (?, ?, ?)",
+            [postId, username, content]
+        );
+
+        connection.release();
+
+        res.status(201).json({ message: "Comment added successfully!" });
+    } catch (error) {
+        console.error("❌ Error adding comment:", error);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+});
+
 router.get("/:id/comments", async (req, res) => {
     try {
         const postId = req.params.id;
