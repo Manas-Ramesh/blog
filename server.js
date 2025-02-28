@@ -31,7 +31,7 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const session = require("express-session");
-const KnexSessionStore = require("connect-session-knex")(session);
+const KnexSessionStore = require("connect-session-knex").default; // ✅ Fix the import
 const knex = require("knex");
 const { router: authRoutes, authenticateToken, isAdmin } = require("./routes/authRoutes");
 const postRoutes = require("./routes/posts"); 
