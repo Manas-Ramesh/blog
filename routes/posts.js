@@ -176,35 +176,34 @@ router.get("/slug/:slug", async (req, res) => {
         res.status(500).json({ message: "Internal Server Error" });
     }
 });
-router.put("/:id", authenticateToken, isAdmin, async (req, res) => {
-    try {
-        const postId = req.params.id;
-        const { title, slug, content, category } = req.body;
+router.put("/:id", authenticateToken, isAdmin, (req, res) => {
+    const postId = req.params.id;
+    const { title, slug, content, tags, category } = req.body;
 
-        if (!title || !slug || !content || !category) {
-            return res.status(400).json({ message: "All fields are required" });
-        }
-
-        const connection = await db.getConnection();
-
-        // ✅ Update post details
-        const [updateResult] = await connection.query(
-            "UPDATE posts SET title = ?, slug = ?, content = ?, category = ? WHERE id = ?",
-            [title, slug, content, category, postId]
-        );
-
-        connection.release();
-
-        if (updateResult.affectedRows === 0) {
-            return res.status(404).json({ message: "Post not found or no changes made" });
-        }
-
-        res.json({ message: "Post updated successfully!", slug });
-    } catch (error) {
-        console.error("❌ Error updating post:", error);
-        res.status(500).json({ message: "Internal server error" });
+    if (!title || !slug || !content || !category) {
+        return res.status(400).json({ error: "Title, slug, content, and category are required" });
     }
+
+    // ✅ Ensure the existing `author` and `date` are not overwritten
+    db.query(
+        "UPDATE posts SET title = ?, slug = ?, content = ?, tags = ?, category = ?, date = NOW() WHERE id = ?",
+        [title, slug, content, tags, category, postId],
+        (err, result) => {
+            if (err) {
+                console.error("❌ Update Error:", err);
+                return res.status(500).json({ error: "Database error" });
+            }
+
+            if (result.affectedRows === 0) {
+                return res.status(404).json({ error: "Post not found" });
+            }
+
+            console.log("✅ Post updated successfully:", { postId, title, slug, category });
+            res.json({ message: "Post updated successfully" });
+        }
+    );
 });
+
 // ✅ Create a new post (Admin Only)
 router.post("/", authenticateToken, isAdmin, async (req, res) => {
     try {
