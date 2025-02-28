@@ -124,12 +124,7 @@ router.get(
         console.log("✅ Google User Info:", req.user);
 
         // ✅ Check if the logged-in user is the admin
-        if (req.user.email !== process.env.ADMIN_EMAIL) {
-            console.warn("❌ Unauthorized Email Attempt:", req.user.email);
 
-            // ✅ Redirect to home with an error message
-            return res.redirect(`${process.env.FRONTEND_URL}/?error=unauthorized`);
-        }
 
         // ✅ Generate JWT Token for the admin
         const token = jwt.sign(
