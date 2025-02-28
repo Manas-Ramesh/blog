@@ -179,27 +179,31 @@ router.delete("/:id", authenticateToken, (req, res) => {
         res.json({ message: "Post deleted successfully" });
     });
 });
+
+// Update a post by ID (Admin only)
 router.put("/:id", authenticateToken, (req, res) => {
     const postId = req.params.id;
-    const { title, slug, content, category } = req.body;
+    const { title, slug, content, tags, category } = req.body;
 
-    if (!title || !content || !category) {
-        return res.status(400).json({ error: "Title, content, and category are required" });
+    if (!title || !slug || !content || !category) {
+        return res.status(400).json({ error: "Title, slug, content, and category are required" });
     }
 
-    // ✅ Get author from `req.user`
-    const author = req.user.email.split("@")[0];  
-
+    // ✅ Ensure the existing `author` and `date` are not overwritten
     db.query(
-        "UPDATE posts SET title = ?, slug = ?, content = ?, category = ?, author = ? WHERE id = ?",
-        [title, slug, content, category, author, postId],
+        "UPDATE posts SET title = ?, slug = ?, content = ?, tags = ?, category = ?, date = NOW() WHERE id = ?",
+        [title, slug, content, tags, category, postId],
         (err, result) => {
-            if (err) return res.status(500).json(err);
+            if (err) {
+                console.error("❌ Update Error:", err);
+                return res.status(500).json({ error: "Database error" });
+            }
 
             if (result.affectedRows === 0) {
                 return res.status(404).json({ error: "Post not found" });
             }
 
+            console.log("✅ Post updated successfully:", { postId, title, slug, category });
             res.json({ message: "Post updated successfully" });
         }
     );
