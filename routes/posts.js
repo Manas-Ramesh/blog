@@ -134,7 +134,7 @@ const formatMySQLDate = (isoDate) => {
     return date.toISOString().slice(0, 19).replace("T", " "); // Convert to 'YYYY-MM-DD HH:MM:SS'
 };
 
-router.post("/", authenticateToken, async (req, res) => {
+router.post("/", authenticateToken,isAdmin, async (req, res) => {
     try {
         const { title, content, category } = req.body;
 
@@ -175,7 +175,7 @@ router.post("/", authenticateToken, async (req, res) => {
 
 
 // Delete a post by ID (Admin only)
-router.delete("/:id", authenticateToken, (req, res) => {
+router.delete("/:id", authenticateToken, isAdmin, (req, res) => {
     const postId = req.params.id;
 
     db.query("DELETE FROM posts WHERE id = ?", [postId], (err, result) => {
@@ -190,7 +190,7 @@ router.delete("/:id", authenticateToken, (req, res) => {
 });
 
 // Update a post by ID (Admin only)
-router.put("/:id", authenticateToken, (req, res) => {
+router.put("/:id", authenticateToken, isAdmin, (req, res) => {
     const postId = req.params.id;
     const { title, slug, content, tags, category } = req.body;
 
