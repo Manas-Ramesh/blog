@@ -3,57 +3,65 @@ const router = express.Router();
 const db = require("../db"); // ✅ Now using the connection pool
 const { authenticateToken } = require("./authRoutes");
 
-router.post("/:postId", authenticateToken, async (req, res) => {
+router.post("/likes/:id", authenticateToken, async (req, res) => {
     try {
-        const { postId } = req.params;
-        const userId = req.user.id;
+        const postId = req.params.id;
+        const userEmail = req.user.email; // ✅ Use email instead of ID
 
-        // ✅ Get a database connection from the pool
+        if (!postId || !userEmail) {
+            return res.status(400).json({ message: "Post ID and User Email are required." });
+        }
+
+        console.log("🔍 Toggling like for Post ID:", postId, "by User Email:", userEmail);
+
         const connection = await db.getConnection();
 
         // ✅ Check if user already liked the post
-        const [existingLikes] = await connection.query(
-            "SELECT * FROM likes WHERE post_id = ? AND user_id = ?",
-            [postId, userId]
+        const [existingLike] = await connection.query(
+            "SELECT * FROM likes WHERE post_id = ? AND user_email = ?",
+            [postId, userEmail]
         );
 
-        if (existingLikes.length > 0) {
-            await connection.query(
-                "DELETE FROM likes WHERE post_id = ? AND user_id = ?",
-                [postId, userId]
-            );
-            connection.release(); // ✅ Release connection back to pool
+        if (existingLike.length > 0) {
+            // ✅ Unlike the post
+            await connection.query("DELETE FROM likes WHERE post_id = ? AND user_email = ?", [postId, userEmail]);
+            connection.release();
             return res.json({ message: "Like removed" });
         } else {
-            await connection.query(
-                "INSERT INTO likes (post_id, user_id) VALUES (?, ?)",
-                [postId, userId]
-            );
-            connection.release(); // ✅ Release connection back to pool
+            // ✅ Add a new like
+            await connection.query("INSERT INTO likes (post_id, user_email) VALUES (?, ?)", [postId, userEmail]);
+            connection.release();
             return res.json({ message: "Post liked" });
         }
     } catch (error) {
         console.error("❌ Error toggling like:", error);
-        res.status(500).json({ message: "Internal server error" });
+        res.status(500).json({ message: "Internal server error", error: error.message });
     }
 });
-router.get("/:postId", async (req, res) => {
+
+router.get("/likes/:id", authenticateToken, async (req, res) => {
     try {
-        const { postId } = req.params;
+        const postId = req.params.id;
+        const userEmail = req.user.email; // ✅ Use email instead of ID
+
+        if (!postId || !userEmail) {
+            return res.status(400).json({ message: "Post ID and User Email are required." });
+        }
+
         const connection = await db.getConnection();
 
-        const [likesCount] = await connection.query(
-            "SELECT COUNT(*) AS count FROM likes WHERE post_id = ?",
-            [postId]
+        // ✅ Check if the user has liked the post
+        const [existingLike] = await connection.query(
+            "SELECT * FROM likes WHERE post_id = ? AND user_email = ?",
+            [postId, userEmail]
         );
 
         connection.release();
-        res.json({ likes_count: likesCount[0]?.count || 0 });
+        res.json({ liked: existingLike.length > 0 });
     } catch (error) {
-        console.error("❌ Error fetching likes:", error);
+        console.error("❌ Error checking like status:", error);
         res.status(500).json({ message: "Internal server error" });
     }
 });
-
 
 module.exports = router;
