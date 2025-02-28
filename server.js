@@ -31,8 +31,20 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const session = require("express-session");
-const KnexSessionStore = require("connect-session-knex").default; // ✅ Fix the import
-const knex = require("knex");
+const KnexSessionStore = require("connect-session-knex") // ✅ Fix the import
+
+const knex = require("knex")({
+    client: "mysql",
+    connection: {
+        host: process.env.DB_HOST,
+        user: process.env.DB_USER,
+        password: process.env.DB_PASS,
+        database: process.env.DB_NAME,
+        port: process.env.DB_PORT || 3306,
+    },
+});
+
+
 const { router: authRoutes, authenticateToken, isAdmin } = require("./routes/authRoutes");
 const postRoutes = require("./routes/posts"); 
 const db = require("./db"); // ✅ Use the existing database connection
@@ -45,37 +57,36 @@ app.use(cors({ origin: process.env.FRONTEND_URL, credentials: true }));
 app.use(express.json());
 
 // ✅ Use the same database for session storage
-const store = new KnexSessionStore({
-    knex: knex({
-        client: "mysql", // ✅ Ensure this matches your Railway DB
-        connection: {
-            host: process.env.DB_HOST,
-            user: process.env.DB_USER,
-            password: process.env.DB_PASS,
-            database: process.env.DB_NAME,
-            port: process.env.DB_PORT,
-        },
-    }),
-    tablename: "sessions", // ✅ Creates a sessions table if not exists
+const store = new KnexSessionStore.KnexSessionStore({  // ✅ Corrected way to initialize
+    knex,
+    tablename: "sessions",
     sidfieldname: "sid",
-    createtable: true, // ✅ Auto-creates session table
-    clearInterval: 1000 * 60 * 60 * 24, // ✅ Clears expired sessions daily
+    createtable: true,
+    clearInterval: 1000 * 60 * 60 * 24, // ✅ Clears expired sessions every 24 hours
 });
-
-// ✅ Apply Session Middleware
 app.use(
     session({
-        secret: process.env.SESSION_SECRET, // ✅ Store this in `.env`
+        secret: process.env.SESSION_SECRET,
         resave: false,
         saveUninitialized: false,
-        store: store, // ✅ Now using MySQL instead of MemoryStore
-        cookie: {
-            secure: process.env.NODE_ENV === "production", // ✅ Secure only in production
-            httpOnly: true,
-            maxAge: 1000 * 60 * 60 * 24 * 7, // ✅ Sessions last for 7 days
-        },
+        store,  // ✅ Uses the fixed store instance
+        cookie: { secure: false }, // Set to true if using HTTPS
     })
 );
+// ✅ Apply Session Middleware
+// app.use(
+//     session({
+//         secret: process.env.SESSION_SECRET, // ✅ Store this in `.env`
+//         resave: false,
+//         saveUninitialized: false,
+//         store: store, // ✅ Now using MySQL instead of MemoryStore
+//         cookie: {
+//             secure: process.env.NODE_ENV === "production", // ✅ Secure only in production
+//             httpOnly: true,
+//             maxAge: 1000 * 60 * 60 * 24 * 7, // ✅ Sessions last for 7 days
+//         },
+//     })
+// );
 
 // ✅ Routes
 app.use("/auth", authRoutes);
