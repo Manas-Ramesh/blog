@@ -132,9 +132,15 @@ router.post("/", authenticateToken, async (req, res) => {
 
         // ✅ Extract username from email
         const author = req.user?.email ? req.user.email.split("@")[0] : "Unknown";
-        const date = new Date().toISOString(); 
+
+        if (!author) {
+            console.error("❌ Error: Author is missing!");
+            return res.status(400).json({ error: "Author is missing" });
+        }
 
         console.log("✅ Author being saved:", author);
+
+        const date = new Date().toISOString(); // ✅ Store date in ISO format
 
         db.query(
             "INSERT INTO posts (title, content, category, author, date) VALUES (?, ?, ?, ?, ?)",
