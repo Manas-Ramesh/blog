@@ -137,7 +137,7 @@ router.get("/:id", async (req, res) => {
         const [counts] = await connection.query(
             `SELECT 
                 (SELECT COUNT(*) FROM likes WHERE post_id = ?) AS likes_count,
-                (SELECT COUNT(*) FROM views WHERE post_id = ?) AS views_count,`,
+                (SELECT COUNT(*) FROM views WHERE post_id = ?) AS views`,
             [postId, postId]
         );
 
