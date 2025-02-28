@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const db = require("../db");
-const authenticate = require("../middleware/authenticate"); // Ensure user is authenticated
+const { authenticateToken,isAdmin } = require("./authRoutes");
 
 // Toggle Like on a Post
 router.post("/:postId", authenticate, async (req, res) => {
