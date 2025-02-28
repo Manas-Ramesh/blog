@@ -249,4 +249,27 @@ router.post("/:id/view", authenticateToken, async (req, res) => {
     }
 });
 
+router.get("/related/:slug", async (req, res) => {
+    try {
+        const slug = req.params.slug;
+        const connection = await db.getConnection();
+
+        const [results] = await connection.query(
+            "SELECT * FROM posts WHERE slug != ? ORDER BY RAND() LIMIT 3",
+            [slug]
+        );
+
+        connection.release();
+
+        if (results.length === 0) {
+            return res.status(200).json([]); // ✅ Return empty array instead of 404
+        }
+
+        res.json(results);
+    } catch (error) {
+        console.error("❌ Database Error:", error);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+});
+
 module.exports = router;
