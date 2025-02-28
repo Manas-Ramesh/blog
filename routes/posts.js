@@ -61,30 +61,30 @@ router.get("/:id/comments", async (req, res) => {
 router.post("/likes/:id", authenticateToken, async (req, res) => {
     try {
         const postId = req.params.id;
-        const userId = req.user.id; // ✅ Ensure user is authenticated
+        const userEmail = req.user.email; // ✅ Use email instead of ID
 
-        if (!postId || !userId) {
-            return res.status(400).json({ message: "Post ID and User ID are required." });
+        if (!postId || !userEmail) {
+            return res.status(400).json({ message: "Post ID and User Email are required." });
         }
 
-        console.log("🔍 Toggling like for Post ID:", postId, "by User ID:", userId);
+        console.log("🔍 Toggling like for Post ID:", postId, "by User Email:", userEmail);
 
         const connection = await db.getConnection();
 
         // ✅ Check if user already liked the post
         const [existingLike] = await connection.query(
-            "SELECT * FROM likes WHERE post_id = ? AND user_id = ?",
-            [postId, userId]
+            "SELECT * FROM likes WHERE post_id = ? AND user_email = ?",
+            [postId, userEmail]
         );
 
         if (existingLike.length > 0) {
             // ✅ Unlike the post
-            await connection.query("DELETE FROM likes WHERE post_id = ? AND user_id = ?", [postId, userId]);
+            await connection.query("DELETE FROM likes WHERE post_id = ? AND user_email = ?", [postId, userEmail]);
             connection.release();
             return res.json({ message: "Like removed" });
         } else {
             // ✅ Add a new like
-            await connection.query("INSERT INTO likes (post_id, user_id) VALUES (?, ?)", [postId, userId]);
+            await connection.query("INSERT INTO likes (post_id, user_email) VALUES (?, ?)", [postId, userEmail]);
             connection.release();
             return res.json({ message: "Post liked" });
         }
@@ -93,6 +93,7 @@ router.post("/likes/:id", authenticateToken, async (req, res) => {
         res.status(500).json({ message: "Internal server error", error: error.message });
     }
 });
+
 
 
 
