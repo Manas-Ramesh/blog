@@ -1,69 +1,30 @@
 const express = require("express");
-const db = require("../db"); 
-const { authenticateToken } = require("./authRoutes");
-
 const router = express.Router();
+const db = require("../db");
+const authenticate = require("../middleware/authenticate"); // Ensure user is authenticated
 
-// ✅ Get likes count for a post
-router.get("/:postId", (req, res) => {
-    const { postId } = req.params;
-    db.query("SELECT COUNT(*) AS likes FROM likes WHERE post_id = ?", [postId], (err, result) => {
-        if (err) {
-            console.error("❌ Database Error:", err);
-            return res.status(500).json({ error: "Internal Server Error" });
+// Toggle Like on a Post
+router.post("/:postId", authenticate, async (req, res) => {
+    try {
+        const { postId } = req.params;
+        const userId = req.user.id; // Get logged-in user ID
+
+        // Check if user already liked the post
+        const existingLike = await db.get("SELECT * FROM likes WHERE post_id = ? AND user_id = ?", [postId, userId]);
+
+        if (existingLike) {
+            // Unlike the post
+            await db.run("DELETE FROM likes WHERE post_id = ? AND user_id = ?", [postId, userId]);
+            return res.json({ message: "Like removed" });
+        } else {
+            // Add a new like
+            await db.run("INSERT INTO likes (post_id, user_id) VALUES (?, ?)", [postId, userId]);
+            return res.json({ message: "Post liked" });
         }
-        res.json({ likes: result[0].likes });
-    });
-});
-
-// ✅ Check if user liked a post
-router.get("/:postId/liked", authenticateToken, (req, res) => {
-    const { postId } = req.params;
-    const userEmail = req.user.email;
-
-    db.query("SELECT * FROM likes WHERE post_id = ? AND user_email = ?", [postId, userEmail], (err, result) => {
-        if (err) {
-            console.error("❌ Database Error:", err);
-            return res.status(500).json({ error: "Internal Server Error" });
-        }
-        res.json({ liked: result.length > 0 });
-    });
-});
-
-// ✅ Like a post
-router.post("/:postId", authenticateToken, (req, res) => {
-    const { postId } = req.params;
-    const userEmail = req.user.email;
-
-    db.query("INSERT INTO likes (post_id, user_email) VALUES (?, ?)", [postId, userEmail], (err) => {
-        if (err) {
-            if (err.code === "ER_DUP_ENTRY") {
-                return res.status(400).json({ message: "Already liked this post" });
-            }
-            console.error("❌ Database Error:", err);
-            return res.status(500).json({ error: "Internal Server Error" });
-        }
-        res.json({ message: "Post liked!" });
-    });
-});
-
-// ✅ Unlike a post
-router.delete("/:postId", authenticateToken, (req, res) => {
-    const { postId } = req.params;
-    const userEmail = req.user.email;
-
-    db.query("DELETE FROM likes WHERE post_id = ? AND user_email = ?", [postId, userEmail], (err, result) => {
-        if (err) {
-            console.error("❌ Database Error:", err);
-            return res.status(500).json({ error: "Internal Server Error" });
-        }
-
-        if (result.affectedRows === 0) {
-            return res.status(400).json({ message: "You haven't liked this post" });
-        }
-
-        res.json({ message: "Like removed" });
-    });
+    } catch (error) {
+        console.error("Error toggling like:", error);
+        res.status(500).json({ message: "Internal server error" });
+    }
 });
 
 module.exports = router;

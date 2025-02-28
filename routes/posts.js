@@ -32,19 +32,27 @@ router.get("/", (req, res) => {
 
 
 // Get a single post by ID
-router.get("/:id", (req, res) => {
-    const postId = req.params.id;
+router.get("/:id", async (req, res) => {
+    try {
+        const postId = req.params.id;
 
-    db.query("SELECT * FROM posts WHERE id = ?", [postId], (err, results) => {
-        if (err) return res.status(500).json(err);
+        // Fetch the post
+        const post = await db.get("SELECT * FROM posts WHERE id = ?", [postId]);
 
-        if (results.length === 0) {
-            return res.status(404).json({ error: "Post not found" });
+        if (!post) {
+            return res.status(404).json({ message: "Post not found" });
         }
 
-        res.json(results[0]); // Send post details
-    });
+        // Fetch like count
+        const likesCount = await db.get("SELECT COUNT(*) AS count FROM likes WHERE post_id = ?", [postId]);
+
+        res.json({ ...post, likes_count: likesCount.count || 0 });
+    } catch (error) {
+        console.error("Error fetching post:", error);
+        res.status(500).json({ message: "Internal server error" });
+    }
 });
+
 // Get a single post by slug
 // router.get("/slug/:slug", (req, res) => {
 //     const { slug } = req.params;
