@@ -3,6 +3,28 @@ const db = require("../db"); // Import database connection
 const { authenticateToken, isAdmin } = require("./authRoutes");
 
 const router = express.Router();
+router.get("/:id/comments", async (req, res) => {
+    try {
+        const postId = req.params.id;
+        const connection = await db.getConnection();
+
+        const [results] = await connection.query(
+            "SELECT username, content, created_at FROM comments WHERE post_id = ? ORDER BY created_at DESC",
+            [postId]
+        );
+
+        connection.release();
+
+        if (results.length === 0) {
+            return res.status(200).json([]); // ✅ Return empty array instead of 404
+        }
+
+        res.json(results);
+    } catch (error) {
+        console.error("❌ Database Error:", error);
+        res.status(500).json({ message: "Internal Server Error" });
+    }
+});
 
 // ✅ Toggle Like on a Post
 router.post("/likes/:id", authenticateToken, async (req, res) => {
