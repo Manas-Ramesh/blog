@@ -225,7 +225,6 @@ router.delete("/:id", authenticateToken, isAdmin, async (req, res) => {
         res.status(500).json({ message: "Internal server error" });
     }
 });
-
 // ✅ Track a view only if the user hasn't viewed it before
 router.post("/:id/view", authenticateToken, async (req, res) => {
     try {
@@ -238,6 +237,7 @@ router.post("/:id/view", authenticateToken, async (req, res) => {
 
         const connection = await db.getConnection();
 
+        // ✅ Check if the user already viewed the post
         const [existingView] = await connection.query(
             "SELECT * FROM views WHERE post_id = ? AND user_email = ?",
             [postId, userEmail]
@@ -245,22 +245,68 @@ router.post("/:id/view", authenticateToken, async (req, res) => {
 
         if (existingView.length > 0) {
             connection.release();
-            return res.json({ message: "View already recorded" });
+
+            // ✅ Fetch updated view count
+            const [[{ views_count }]] = await db.query(
+                "SELECT COUNT(*) AS views_count FROM views WHERE post_id = ?",
+                [postId]
+            );
+
+            return res.json({ views_count, message: "View already recorded" });
         }
+
+        // ✅ Insert the new view
+        await connection.query("INSERT INTO views (post_id, user_email) VALUES (?, ?)", [postId, userEmail]);
+
+        // ✅ Fetch the updated views count **AFTER INSERTING**
         const [[{ views_count }]] = await connection.query(
             "SELECT COUNT(*) AS views_count FROM views WHERE post_id = ?",
             [postId]
         );
-        await connection.query("INSERT INTO views (post_id, user_email) VALUES (?, ?)", [postId, userEmail]);
-        res.json({ views_count }); // ✅ Ensure `liked` is included in response
 
         connection.release();
-        res.json({ message: "View recorded" });
+        return res.json({ views_count }); // ✅ Ensure the frontend gets the updated count
     } catch (error) {
         console.error("❌ Error tracking view:", error);
         res.status(500).json({ message: "Internal server error" });
     }
 });
+
+// // ✅ Track a view only if the user hasn't viewed it before
+// router.post("/:id/view", authenticateToken, async (req, res) => {
+//     try {
+//         const { id: postId } = req.params;
+//         const userEmail = req.user.email;
+
+//         if (!userEmail) {
+//             return res.status(401).json({ message: "Unauthorized" });
+//         }
+
+//         const connection = await db.getConnection();
+
+//         const [existingView] = await connection.query(
+//             "SELECT * FROM views WHERE post_id = ? AND user_email = ?",
+//             [postId, userEmail]
+//         );
+
+//         if (existingView.length > 0) {
+//             connection.release();
+//             return res.json({ message: "View already recorded" });
+//         }
+//         const [[{ views_count }]] = await connection.query(
+//             "SELECT COUNT(*) AS views_count FROM views WHERE post_id = ?",
+//             [postId]
+//         );
+//         await connection.query("INSERT INTO views (post_id, user_email) VALUES (?, ?)", [postId, userEmail]);
+//         res.json({ views_count }); // ✅ Ensure `liked` is included in response
+
+//         connection.release();
+//         res.json({ message: "View recorded" });
+//     } catch (error) {
+//         console.error("❌ Error tracking view:", error);
+//         res.status(500).json({ message: "Internal server error" });
+//     }
+// });
 
 router.get("/related/:slug", async (req, res) => {
     try {
