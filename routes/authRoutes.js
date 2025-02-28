@@ -185,16 +185,20 @@ router.get("/", (req, res) => {
 const authenticateToken = (req, res, next) => {
     const token = req.header("Authorization")?.split(" ")[1];
 
+    console.log("🔍 Token Received:", token); // Debug log
+
     if (!token) {
-        return res.status(401).json({ message: "Access denied" });
+        return res.status(401).json({ message: "Access denied. No token provided." });
     }
 
     jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
         if (err) return res.status(403).json({ message: "Invalid token" });
+        console.log("✅ Authenticated User:", user); // Debug log
         req.user = user;
         next();
     });
 };
+
 
 // ✅ Middleware to Check Admin Access
 const isAdmin = (req, res, next) => {

@@ -237,14 +237,22 @@ router.get("/:id/comments", (req, res) => {
 router.post("/:id/comments", authenticateToken, (req, res) => {
     const postId = req.params.id;
     const { content } = req.body;
+    console.log("🔍 Incoming Comment Request by User:", req.user); // Debug log
+
+    if (!req.user) {
+        console.error("❌ No user detected.");
+        return res.status(401).json({ message: "Unauthorized. No user detected" });
+    }
+
     const username = req.user.name; // Extracted from Google OAuth
 
     if (!content) {
         return res.status(400).json({ error: "Content is required" });
     }
 
-    db.query("INSERT INTO comments (post_id, username, content) VALUES (?, ?, ?)", 
-        [postId, username, content], 
+    db.query(
+        "INSERT INTO comments (post_id, username, content) VALUES (?, ?, ?)",
+        [postId, username, content],
         (err, result) => {
             if (err) {
                 console.error("❌ Database Error:", err);
@@ -254,6 +262,7 @@ router.post("/:id/comments", authenticateToken, (req, res) => {
         }
     );
 });
+
 
 
 
