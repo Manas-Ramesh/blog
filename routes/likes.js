@@ -4,7 +4,7 @@ const db = require("../db");
 const { authenticateToken,isAdmin } = require("./authRoutes");
 
 // Toggle Like on a Post
-router.post("/:postId", authenticate, async (req, res) => {
+router.post("/:postId", authenticateToken, async (req, res) => {
     try {
         const { postId } = req.params;
         const userId = req.user.id; // Get logged-in user ID

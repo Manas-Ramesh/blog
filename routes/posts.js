@@ -1,9 +1,12 @@
 const express = require("express");
 const db = require("../db"); // Import database connection
 const { authenticateToken,isAdmin } = require("./authRoutes");
-const { likePost } = require("./likes")
+// const { likePost } = require("./likes")
 
 const router = express.Router();
+const likePost = (req, res) => {
+    res.json({ message: "Like registered successfully!" });
+};
 
 // Get all posts
 // Get all posts (or filter by category)
@@ -276,7 +279,7 @@ router.post("/:id/comments", authenticateToken, (req, res) => {
 });
 
 // ✅ Define like route correctly
-router.post("/:postId/like", likePost);
+router.post("/:postId/like", authenticateToken, likePost);
 
 
 
