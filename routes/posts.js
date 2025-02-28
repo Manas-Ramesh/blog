@@ -4,8 +4,25 @@ const { authenticateToken,isAdmin } = require("./authRoutes");
 // const { likePost } = require("./likes")
 
 const router = express.Router();
-const likePost = (req, res) => {
-    res.json({ message: "Like registered successfully!" });
+const likePost = async (req, res) => {
+    try {
+        const { postId } = req.params;
+        const userId = req.user.id;
+
+        // Ensure the user hasn't liked the post already
+        const existingLike = await db.get("SELECT * FROM likes WHERE post_id = ? AND user_id = ?", [postId, userId]);
+
+        if (existingLike) {
+            await db.run("DELETE FROM likes WHERE post_id = ? AND user_id = ?", [postId, userId]);
+            return res.json({ message: "Like removed" });
+        } else {
+            await db.run("INSERT INTO likes (post_id, user_id) VALUES (?, ?)", [postId, userId]);
+            return res.json({ message: "Post liked" });
+        }
+    } catch (error) {
+        console.error("Error liking post:", error);
+        res.status(500).json({ message: "Internal server error" });
+    }
 };
 
 // Get all posts
@@ -38,21 +55,15 @@ router.get("/", (req, res) => {
 router.get("/:id", async (req, res) => {
     try {
         const postId = req.params.id;
-
-        // Fetch the post
         const post = await db.get("SELECT * FROM posts WHERE id = ?", [postId]);
 
-        if (!post) {
-            return res.status(404).json({ message: "Post not found" });
-        }
+        if (!post) return res.status(404).json({ message: "Post not found" });
 
-        // Fetch like count
         const likesCount = await db.get("SELECT COUNT(*) AS count FROM likes WHERE post_id = ?", [postId]);
-
         res.json({ ...post, likes_count: likesCount.count || 0 });
     } catch (error) {
-        console.error("Error fetching post:", error);
-        res.status(500).json({ message: "Internal server error" });
+        console.error("❌ Error fetching post:", error);
+        res.status(500).json({ message: "Internal Server Error" });
     }
 });
 

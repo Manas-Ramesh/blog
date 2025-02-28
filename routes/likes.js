@@ -1,13 +1,13 @@
 const express = require("express");
 const router = express.Router();
 const db = require("../db");
-const { authenticateToken,isAdmin } = require("./authRoutes");
+const { authenticateToken } = require("./authRoutes");
 
-// Toggle Like on a Post
+// ✅ Toggle Like on a Post
 router.post("/:postId", authenticateToken, async (req, res) => {
     try {
         const { postId } = req.params;
-        const userId = req.user.id; // Get logged-in user ID
+        const userId = req.user.id;
 
         // Check if user already liked the post
         const existingLike = await db.get("SELECT * FROM likes WHERE post_id = ? AND user_id = ?", [postId, userId]);
@@ -22,7 +22,30 @@ router.post("/:postId", authenticateToken, async (req, res) => {
             return res.json({ message: "Post liked" });
         }
     } catch (error) {
-        console.error("Error toggling like:", error);
+        console.error("❌ Error toggling like:", error);
+        res.status(500).json({ message: "Internal server error" });
+    }
+});
+
+// ✅ Get the like count and user like status
+router.get("/:postId", authenticateToken, async (req, res) => {
+    try {
+        const { postId } = req.params;
+        const userId = req.user.id;
+
+        // Get like count
+        const likesCount = await db.get("SELECT COUNT(*) AS count FROM likes WHERE post_id = ?", [postId]);
+
+        // Check if the user has liked the post
+        const existingLike = await db.get("SELECT * FROM likes WHERE post_id = ? AND user_id = ?", [postId, userId]);
+
+        res.json({ 
+            likes_count: likesCount.count || 0, 
+            liked: !!existingLike // true if the user has liked the post
+        });
+
+    } catch (error) {
+        console.error("❌ Error fetching like count:", error);
         res.status(500).json({ message: "Internal server error" });
     }
 });
