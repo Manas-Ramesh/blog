@@ -52,20 +52,32 @@ router.get("/", (req, res) => {
 
 
 // Get a single post by ID
-router.get("/:id", async (req, res) => {
-    try {
-        const postId = req.params.id;
-        const post = await db.get("SELECT * FROM posts WHERE id = ?", [postId]);
+// Get a single post by ID
+router.get("/:id", (req, res) => {
+    const postId = req.params.id;
 
-        if (!post) return res.status(404).json({ message: "Post not found" });
+    db.query("SELECT * FROM posts WHERE id = ?", [postId], (err, results) => {
+        if (err) {
+            console.error("Database error:", err);
+            return res.status(500).json({ message: "Database error" });
+        }
 
-        const likesCount = await db.get("SELECT COUNT(*) AS count FROM likes WHERE post_id = ?", [postId]);
-        res.json({ ...post, likes_count: likesCount.count || 0 });
-    } catch (error) {
-        console.error("❌ Error fetching post:", error);
-        res.status(500).json({ message: "Internal Server Error" });
-    }
+        if (results.length === 0) {
+            return res.status(404).json({ message: "Post not found" });
+        }
+
+        // Fetch like count
+        db.query("SELECT COUNT(*) AS count FROM likes WHERE post_id = ?", [postId], (likeErr, likeResults) => {
+            if (likeErr) {
+                console.error("Error fetching like count:", likeErr);
+                return res.status(500).json({ message: "Error fetching like count" });
+            }
+
+            res.json({ ...results[0], likes_count: likeResults[0].count || 0 });
+        });
+    });
 });
+
 
 // Get a single post by slug
 // router.get("/slug/:slug", (req, res) => {
