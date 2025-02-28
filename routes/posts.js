@@ -8,14 +8,23 @@ const router = express.Router();
 // Get all posts (or filter by category)
 // Get all posts (or filter by category)
 router.get("/", (req, res) => {
-    db.query("SELECT id, title, slug, content FROM posts", (err, results) => {
-        if (err) return res.status(500).json(err);
-        res.json(results.map(post => ({
-            ...post,
-            slug: post.slug || generateSlug(post.title) // ✅ Ensure slug exists
-        })));
+    const { category } = req.query;
+    let sql = "SELECT * FROM posts";
+
+    if (category) {
+        sql += " WHERE category = ?";
+    }
+
+    db.query(sql, category ? [category] : [], (err, results) => {
+        if (err) {
+            console.error("❌ Database Error:", err);
+            return res.status(500).json({ error: "Internal Server Error" });
+        }
+        console.log("✅ Posts Fetched:", results);
+        res.json(results);
     });
 });
+
 
 
 // Get a single post by ID
