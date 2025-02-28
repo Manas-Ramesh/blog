@@ -1,24 +1,27 @@
+
 // require("dotenv").config();
 // const express = require("express");
-// const db = require("./db"); // Import database connection
-//  // Import middleware
-//  const { router: authRoutes, authenticateToken } = require("./routes/authRoutes");
+// const cors = require("cors");
+// const { router: authRoutes, authenticateToken, isAdmin } = require("./routes/authRoutes");
+// const postRoutes = require("./routes/posts"); 
+
 // const app = express();
 // const PORT = process.env.PORT || 3001;
-// const cors = require("cors");
-// app.use(cors()); // ✅ Allow frontend to access backend
 
-// app.use(express.json()); // Allows JSON requests
-// app.use(express.urlencoded({ extended: true }));
-// const postRoutes = require("./routes/posts"); // Import posts route
-// app.use("/posts", postRoutes); // Use it at /posts
+// app.use(cors({ origin: process.env.FRONTEND_URL, credentials: true }));
+// app.use(express.json());
 // app.use("/auth", authRoutes);
-// app.get("/admin", authenticateToken, (req, res) => {
-//     res.json({ message: `Welcome, ${req.user.username}!` });
+// app.use("/posts", postRoutes);
+// const likesRoutes = require("./routes/likes");
+// app.use("/", likesRoutes);
+
+
+// app.get("/admin", authenticateToken, isAdmin, (req, res) => {
+//     res.json({ message: `Welcome, Admin! (${req.user.email})` });
 // });
 
 // app.get("/", (req, res) => {
-//     res.send("Backend is running and connected to MySQL!");
+//     res.send("Backend is running with Google OAuth!");
 // });
 
 // app.listen(PORT, () => {
@@ -27,28 +30,67 @@
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
+const session = require("express-session");
+const KnexSessionStore = require("connect-session-knex")(session);
+const knex = require("knex");
 const { router: authRoutes, authenticateToken, isAdmin } = require("./routes/authRoutes");
 const postRoutes = require("./routes/posts"); 
+const db = require("./db"); // ✅ Use the existing database connection
+const likesRoutes = require("./routes/likes");
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 
 app.use(cors({ origin: process.env.FRONTEND_URL, credentials: true }));
 app.use(express.json());
+
+// ✅ Use the same database for session storage
+const store = new KnexSessionStore({
+    knex: knex({
+        client: "mysql", // ✅ Ensure this matches your Railway DB
+        connection: {
+            host: process.env.DB_HOST,
+            user: process.env.DB_USER,
+            password: process.env.DB_PASS,
+            database: process.env.DB_NAME,
+            port: process.env.DB_PORT,
+        },
+    }),
+    tablename: "sessions", // ✅ Creates a sessions table if not exists
+    sidfieldname: "sid",
+    createtable: true, // ✅ Auto-creates session table
+    clearInterval: 1000 * 60 * 60 * 24, // ✅ Clears expired sessions daily
+});
+
+// ✅ Apply Session Middleware
+app.use(
+    session({
+        secret: process.env.SESSION_SECRET, // ✅ Store this in `.env`
+        resave: false,
+        saveUninitialized: false,
+        store: store, // ✅ Now using MySQL instead of MemoryStore
+        cookie: {
+            secure: process.env.NODE_ENV === "production", // ✅ Secure only in production
+            httpOnly: true,
+            maxAge: 1000 * 60 * 60 * 24 * 7, // ✅ Sessions last for 7 days
+        },
+    })
+);
+
+// ✅ Routes
 app.use("/auth", authRoutes);
 app.use("/posts", postRoutes);
-const likesRoutes = require("./routes/likes");
 app.use("/", likesRoutes);
-
 
 app.get("/admin", authenticateToken, isAdmin, (req, res) => {
     res.json({ message: `Welcome, Admin! (${req.user.email})` });
 });
 
 app.get("/", (req, res) => {
-    res.send("Backend is running with Google OAuth!");
+    res.send("Backend is running with Google OAuth & MySQL-based sessions!");
 });
 
+// ✅ Start Server
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 });
