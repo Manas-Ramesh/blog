@@ -8,22 +8,23 @@ const router = express.Router();
 // Get all posts (or filter by category)
 // Get all posts (or filter by category)
 router.get("/", (req, res) => {
-    const { category } = req.query;
-    let sql = "SELECT * FROM posts";
+    const sql = `
+        SELECT posts.*, 
+               (SELECT COUNT(*) FROM comments WHERE comments.post_id = posts.id) AS comments_count 
+        FROM posts
+    `;
 
-    if (category) {
-        sql += " WHERE category = ?";
-    }
-
-    db.query(sql, category ? [category] : [], (err, results) => {
+    db.query(sql, (err, results) => {
         if (err) {
             console.error("❌ Database Error:", err);
             return res.status(500).json({ error: "Internal Server Error" });
         }
-        console.log("✅ Posts Fetched:", results);
+
+        console.log("✅ Posts Fetched with Comment Counts:", results);
         res.json(results);
     });
 });
+
 
 
 
