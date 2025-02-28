@@ -120,23 +120,30 @@ router.get("/related/:slug", async (req, res) => {
 
 
 
+const formatMySQLDate = (isoDate) => {
+    const date = new Date(isoDate);
+    return date.toISOString().slice(0, 19).replace("T", " "); // Convert to 'YYYY-MM-DD HH:MM:SS'
+};
+
 router.post("/", authenticateToken, async (req, res) => {
     try {
         const { title, content, category } = req.body;
 
         if (!title || !content || !category) {
+            console.error("❌ Missing required fields:", { title, content, category });
             return res.status(400).json({ message: "All fields are required" });
         }
 
         if (!req.user || !req.user.email) {
+            console.error("❌ Unauthorized access - No user detected.");
             return res.status(401).json({ message: "Unauthorized. No user detected" });
         }
 
         const author = req.user.email.split("@")[0];  
-        const date = new Date().toISOString();
-        const slug = generateSlug(title); // ✅ Generate slug from title
+        const date = formatMySQLDate(new Date()); // ✅ Convert to MySQL format
+        const slug = title.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
 
-        console.log("📝 Creating Post - Title:", title, "Slug:", slug, "Author:", author);
+        console.log("📝 Creating Post:", { title, slug, author, date });
 
         db.query(
             "INSERT INTO posts (title, content, category, author, date, slug) VALUES (?, ?, ?, ?, ?, ?)",
@@ -144,16 +151,17 @@ router.post("/", authenticateToken, async (req, res) => {
             (err, result) => {
                 if (err) {
                     console.error("❌ Database Error:", err);
-                    return res.status(500).json({ message: "Internal Server Error" });
+                    return res.status(500).json({ message: "Database error", error: err.message });
                 }
                 res.status(201).json({ message: "Post created successfully!", postId: result.insertId, slug });
             }
         );
     } catch (error) {
-        console.error("❌ Error creating post:", error);
-        res.status(500).json({ message: "Internal server error" });
+        console.error("❌ Server Error:", error);
+        res.status(500).json({ message: "Internal server error", error: error.message });
     }
 });
+
 
 
 
