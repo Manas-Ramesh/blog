@@ -34,12 +34,6 @@ router.post("/likes/:id", authenticateToken, async (req, res) => {
         const postId = req.params.id;
         const userEmail = req.user.email;
 
-        if (!postId || !userEmail) {
-            return res.status(400).json({ message: "Post ID and User Email are required." });
-        }
-
-        console.log("🔍 Toggling like for Post ID:", postId, "by User Email:", userEmail);
-
         const connection = await db.getConnection();
 
         const [existingLike] = await connection.query(
@@ -49,17 +43,23 @@ router.post("/likes/:id", authenticateToken, async (req, res) => {
 
         if (existingLike.length > 0) {
             await connection.query("DELETE FROM likes WHERE post_id = ? AND user_email = ?", [postId, userEmail]);
-            connection.release();
-            return res.json({ message: "Like removed" });
         } else {
             await connection.query("INSERT INTO likes (post_id, user_email) VALUES (?, ?)", [postId, userEmail]);
-            connection.release();
-            return res.json({ message: "Post liked" });
         }
+
+        // ✅ Fetch updated like count
+        const [[{ likes_count }]] = await connection.query(
+            "SELECT COUNT(*) AS likes_count FROM likes WHERE post_id = ?",
+            [postId]
+        );
+
+        connection.release();
+        res.json({ likes_count, liked: likes_count > 0 }); // ✅ Ensure `liked` is included in response
     } catch (error) {
         console.error("❌ Error toggling like:", error);
-        res.status(500).json({ message: "Internal server error", error: error.message });
+        res.status(500).json({ message: "Internal server error" });
     }
 });
+
 
 module.exports = router;
