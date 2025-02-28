@@ -10,7 +10,8 @@ const router = express.Router();
 router.get("/", (req, res) => {
     const sql = `
         SELECT posts.*, 
-               (SELECT COUNT(*) FROM comments WHERE comments.post_id = posts.id) AS comments_count 
+               (SELECT COUNT(*) FROM comments WHERE comments.post_id = posts.id) AS comments_count,
+               (SELECT COUNT(*) FROM likes WHERE likes.post_id = posts.id) AS likes_count 
         FROM posts
     `;
 
@@ -20,10 +21,11 @@ router.get("/", (req, res) => {
             return res.status(500).json({ error: "Internal Server Error" });
         }
 
-        console.log("✅ Posts Fetched with Comment Counts:", results);
+        console.log("✅ Posts Fetched with Likes and Comments:", results);
         res.json(results);
     });
 });
+
 
 
 
