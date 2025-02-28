@@ -6,19 +6,24 @@ const router = express.Router();
 
 // Get all posts
 // Get all posts (or filter by category)
+// Get all posts (or filter by category)
 router.get("/", (req, res) => {
     const { category } = req.query;
-    let sql = "SELECT * FROM posts";
+    let sql = "SELECT id, title, content, category, author, date FROM posts";
 
     if (category) {
         sql += " WHERE category = ?";
     }
 
     db.query(sql, category ? [category] : [], (err, results) => {
-        if (err) return res.status(500).json(err);
+        if (err) {
+            console.error("❌ Database Error:", err);
+            return res.status(500).json(err);
+        }
         res.json(results);
     });
 });
+
 
 // Get a single post by ID
 router.get("/:id", (req, res) => {
@@ -128,29 +133,28 @@ router.post("/", authenticateToken, async (req, res) => {
             return res.status(400).json({ message: "All fields are required" });
         }
 
-        console.log("🔍 User Posting:", req.user);
-
-        // ✅ Extract username from email
-        const author = req.user?.email ? req.user.email.split("@")[0] : "Unknown";
-
-        if (!author) {
-            console.error("❌ Error: Author is missing!");
-            return res.status(400).json({ error: "Author is missing" });
+        // ✅ Get the email from req.user (OAuth User)
+        if (!req.user || !req.user.email) {
+            return res.status(401).json({ message: "Unauthorized. No user detected" });
         }
 
-        console.log("✅ Author being saved:", author);
+        // ✅ Extract username from email (before @)
+        const author = req.user.email.split("@")[0];  
 
         const date = new Date().toISOString(); // ✅ Store date in ISO format
 
+        console.log("📝 Creating Post - Title:", title, "Author:", author);
+
+        // ✅ Save post in DB
         db.query(
             "INSERT INTO posts (title, content, category, author, date) VALUES (?, ?, ?, ?, ?)",
             [title, content, category, author, date],
             (err, result) => {
                 if (err) {
-                    console.error("❌ Database Insert Error:", err);
-                    return res.status(500).json({ error: "Database error" });
+                    console.error("❌ Database Error:", err);
+                    return res.status(500).json({ message: "Internal Server Error" });
                 }
-                res.status(201).json({ message: "Post created successfully!", postId: result.insertId });
+                res.status(201).json({ message: "Post created successfully!", postId: result.insertId, author });
             }
         );
     } catch (error) {
@@ -158,6 +162,7 @@ router.post("/", authenticateToken, async (req, res) => {
         res.status(500).json({ message: "Internal server error" });
     }
 });
+
 
 
 // Delete a post by ID (Admin only)
@@ -174,31 +179,27 @@ router.delete("/:id", authenticateToken, (req, res) => {
         res.json({ message: "Post deleted successfully" });
     });
 });
-
-// Update a post by ID (Admin only)
 router.put("/:id", authenticateToken, (req, res) => {
     const postId = req.params.id;
-    const { title, slug, content, tags, category } = req.body;
+    const { title, slug, content, category } = req.body;
 
-    if (!title || !slug || !content || !category) {
-        return res.status(400).json({ error: "Title, slug, content, and category are required" });
+    if (!title || !content || !category) {
+        return res.status(400).json({ error: "Title, content, and category are required" });
     }
 
-    // ✅ Ensure the existing `author` and `date` are not overwritten
+    // ✅ Get author from `req.user`
+    const author = req.user.email.split("@")[0];  
+
     db.query(
-        "UPDATE posts SET title = ?, slug = ?, content = ?, tags = ?, category = ?, date = NOW() WHERE id = ?",
-        [title, slug, content, tags, category, postId],
+        "UPDATE posts SET title = ?, slug = ?, content = ?, category = ?, author = ? WHERE id = ?",
+        [title, slug, content, category, author, postId],
         (err, result) => {
-            if (err) {
-                console.error("❌ Update Error:", err);
-                return res.status(500).json({ error: "Database error" });
-            }
+            if (err) return res.status(500).json(err);
 
             if (result.affectedRows === 0) {
                 return res.status(404).json({ error: "Post not found" });
             }
 
-            console.log("✅ Post updated successfully:", { postId, title, slug, category });
             res.json({ message: "Post updated successfully" });
         }
     );
