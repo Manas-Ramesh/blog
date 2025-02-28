@@ -28,7 +28,7 @@ router.post("/:postId", authenticateToken, async (req, res) => {
 });
 
 // ✅ Get the like count and user like status
-router.get("/:postId", authenticateToken, async (req, res) => {
+router.get("/:postId", async (req, res) => {
     try {
         const { postId } = req.params;
         const userId = req.user.id;
