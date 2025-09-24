@@ -1,5 +1,5 @@
 require("dotenv").config();
-const mysql = require("mysql2/promise"); // ✅ Use `promise` for better async handling
+const mysql = require("mysql2/promise"); 
 
 const pool = mysql.createPool({
     host: process.env.DB_HOST || "localhost",
@@ -8,8 +8,8 @@ const pool = mysql.createPool({
     database: process.env.DB_NAME || "my_blog",
     port: process.env.DB_PORT || 3306,
     waitForConnections: true,
-    connectionLimit: 10, // ✅ Limit to avoid overwhelming DB
+    connectionLimit: 10, 
     queueLimit: 0, 
 });
 
-module.exports = pool; // ✅ Export pool instead of a single connection
+module.exports = pool;
