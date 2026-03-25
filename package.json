@@ -1,11 +1,14 @@
 {
-  "name": "backend",
+  "name": "blog",
   "version": "1.0.0",
   "description": "",
   "main": "server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node server.js"
+    "dev": "next dev",
+    "build": "next build",
+    "start": "node server.js",
+    "start:next": "next start"
   },
   "keywords": [],
   "author": "",
@@ -24,7 +27,16 @@
     "knex": "^3.1.0",
     "mysql": "^2.18.1",
     "mysql2": "^3.12.0",
+    "next": "^15.1.4",
     "passport": "^0.7.0",
-    "passport-google-oauth20": "^2.0.0"
+    "passport-google-oauth20": "^2.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "typescript": "^5.7.0"
   }
 }
