@@ -128,6 +128,64 @@ router.get("/", async (req, res) => {
     }
 });
 
+// ✅ Must be registered before /:id so /posts/slug/... and /posts/related/... are not captured as ids
+router.get("/slug/:slug", async (req, res) => {
+    try {
+        const slug = req.params.slug;
+        const connection = await db.getConnection();
+
+        const [results] = await connection.query("SELECT * FROM posts WHERE slug = ?", [slug]);
+
+        if (results.length === 0) {
+            connection.release();
+            return res.status(404).json({ error: "Post not found" });
+        }
+
+        const post = results[0];
+        const postId = post.id;
+
+        const [counts] = await connection.query(
+            `SELECT 
+                (SELECT COUNT(*) FROM likes WHERE post_id = ?) AS likes_count,
+                (SELECT COUNT(*) FROM views WHERE post_id = ?) AS view_count`,
+            [postId, postId]
+        );
+
+        connection.release();
+
+        res.json({
+            ...post,
+            likes_count: Number(counts[0]?.likes_count) || 0,
+            views_count: Number(counts[0]?.view_count) || 0,
+        });
+    } catch (error) {
+        console.error("❌ Database Error:", error);
+        res.status(500).json({ message: "Internal Server Error" });
+    }
+});
+
+router.get("/related/:slug", async (req, res) => {
+    try {
+        const slug = req.params.slug;
+        const connection = await db.getConnection();
+
+        const [results] = await connection.query(
+            "SELECT * FROM posts WHERE slug != ? ORDER BY RAND() LIMIT 3",
+            [slug]
+        );
+
+        connection.release();
+
+        if (results.length === 0) {
+            return res.status(200).json([]);
+        }
+
+        res.json(results);
+    } catch (error) {
+        console.error("❌ Database Error:", error);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+});
 
 // ✅ Get a single post by ID (including likes & views)
 router.get("/:id", async (req, res) => {
@@ -135,7 +193,6 @@ router.get("/:id", async (req, res) => {
         const postId = req.params.id;
         const connection = await db.getConnection();
 
-        // ✅ Fetch the post
         const [postResults] = await connection.query("SELECT * FROM posts WHERE id = ?", [postId]);
 
         if (postResults.length === 0) {
@@ -145,11 +202,10 @@ router.get("/:id", async (req, res) => {
 
         const post = postResults[0];
 
-        // ✅ Fetch like and view counts
         const [counts] = await connection.query(
             `SELECT 
                 (SELECT COUNT(*) FROM likes WHERE post_id = ?) AS likes_count,
-                (SELECT COUNT(*) FROM views WHERE post_id = ?) AS views`,
+                (SELECT COUNT(*) FROM views WHERE post_id = ?) AS view_count`,
             [postId, postId]
         );
 
@@ -157,35 +213,12 @@ router.get("/:id", async (req, res) => {
 
         res.json({
             ...post,
-            likes_count: counts[0]?.likes_count || 0,
-            views_count: counts[0]?.views_count || 0,
+            likes_count: Number(counts[0]?.likes_count) || 0,
+            views_count: Number(counts[0]?.view_count) || 0,
         });
     } catch (error) {
         console.error("❌ Error fetching post:", error);
         res.status(500).json({ message: "Internal server error" });
-    }
-});
-
-// ✅ Get a single post by slug
-router.get("/slug/:slug", async (req, res) => {
-    try {
-        const slug = req.params.slug;
-        const connection = await db.getConnection();
-
-        console.log(`🔍 Fetching post with slug: ${slug}`);
-
-        const [results] = await connection.query("SELECT * FROM posts WHERE slug = ?", [slug]);
-
-        connection.release();
-
-        if (results.length === 0) {
-            return res.status(404).json({ error: "Post not found" });
-        }
-
-        res.json(results[0]);
-    } catch (error) {
-        console.error("❌ Database Error:", error);
-        res.status(500).json({ message: "Internal Server Error" });
     }
 });
 router.put("/:id", authenticateToken, isAdmin, async (req, res) => {
@@ -296,20 +329,20 @@ router.post("/:id/view", authenticateToken, async (req, res) => {
             );
 
             connection.release();
-            return res.json({ views_count, message: "View already recorded" });
+            return res.json({ views, message: "View already recorded" });
         }
 
         // ✅ Insert new view if none exists
         await connection.query("INSERT INTO views (post_id, user_email) VALUES (?, ?)", [postId, userEmail]);
 
         // ✅ Fetch updated view count
-        const [[{ views }]] = await connection.query(
+        const [[{ views: totalViews }]] = await connection.query(
             "SELECT COUNT(*) AS views FROM views WHERE post_id = ?",
             [postId]
         );
 
         connection.release();
-        return res.json({ views, message: "View recorded successfully" });
+        return res.json({ views: totalViews, message: "View recorded successfully" });
 
     } catch (error) {
         console.error("❌ Error tracking view:", error);
@@ -354,28 +387,5 @@ router.post("/:id/view", authenticateToken, async (req, res) => {
 //         res.status(500).json({ message: "Internal server error" });
 //     }
 // });
-
-router.get("/related/:slug", async (req, res) => {
-    try {
-        const slug = req.params.slug;
-        const connection = await db.getConnection();
-
-        const [results] = await connection.query(
-            "SELECT * FROM posts WHERE slug != ? ORDER BY RAND() LIMIT 3",
-            [slug]
-        );
-
-        connection.release();
-
-        if (results.length === 0) {
-            return res.status(200).json([]); // ✅ Return empty array instead of 404
-        }
-
-        res.json(results);
-    } catch (error) {
-        console.error("❌ Database Error:", error);
-        res.status(500).json({ error: "Internal Server Error" });
-    }
-});
 
 module.exports = router;

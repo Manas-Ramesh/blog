@@ -7,15 +7,20 @@ const postRoutes = require("./routes/posts");
 
 const app = express();
 const PORT = process.env.PORT || 3001;
-const allowedOrigins = [
-    "http://127.0.0.1:3000", // ✅ For local testing
-    "https://frontend-iota-ten-55.vercel.app", // ✅ Your Vercel frontend URL
-    "https://frontend-70enji21h-manas-projects-a5a3aa0c.vercel.app" // ✅ Replace with actual deployment
-];
+const allowedOrigins = new Set([
+    "http://127.0.0.1:3000",
+    "http://localhost:3000",
+    "https://frontend-iota-ten-55.vercel.app",
+    "https://frontend-70enji21h-manas-projects-a5a3aa0c.vercel.app",
+]);
+
+if (process.env.FRONTEND_URL) {
+    allowedOrigins.add(process.env.FRONTEND_URL.replace(/\/$/, ""));
+}
 
 app.use(cors({
     origin: function (origin, callback) {
-        if (!origin || allowedOrigins.includes(origin)) {
+        if (!origin || allowedOrigins.has(origin)) {
             callback(null, true);
         } else {
             callback(new Error("Not allowed by CORS"));

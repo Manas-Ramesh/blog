@@ -47,14 +47,18 @@ router.post("/likes/:id", authenticateToken, async (req, res) => {
             await connection.query("INSERT INTO likes (post_id, user_email) VALUES (?, ?)", [postId, userEmail]);
         }
 
-        // ✅ Fetch updated like count
         const [[{ likes_count }]] = await connection.query(
             "SELECT COUNT(*) AS likes_count FROM likes WHERE post_id = ?",
             [postId]
         );
 
+        const [stillLiked] = await connection.query(
+            "SELECT * FROM likes WHERE post_id = ? AND user_email = ?",
+            [postId, userEmail]
+        );
+
         connection.release();
-        res.json({ likes_count, liked: likes_count > 0 }); // ✅ Ensure `liked` is included in response
+        res.json({ likes_count, liked: stillLiked.length > 0 });
     } catch (error) {
         console.error("❌ Error toggling like:", error);
         res.status(500).json({ message: "Internal server error" });
